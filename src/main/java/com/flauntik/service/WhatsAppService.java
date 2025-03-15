@@ -1,6 +1,8 @@
 package com.flauntik.service;
 
+import com.google.inject.Inject;
 import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 
@@ -12,8 +14,15 @@ public class WhatsAppService {
     private static final String AUTH_TOKEN = "your_twilio_auth_token";
     private static final String FROM_WHATSAPP = "whatsapp:+your_twilio_number";
 
+    @Inject
     public WhatsAppService() {
         this.webClient = WebClient.create(io.vertx.core.Vertx.vertx());
+    }
+
+    private static MultiMap jsonToMultiMap(JsonObject jsonObject) {
+        MultiMap form = MultiMap.caseInsensitiveMultiMap();
+        jsonObject.forEach(entry -> form.add(entry.getKey(), entry.getValue().toString()));
+        return form;
     }
 
     public Future<JsonObject> sendMessage(String to, String message) {
@@ -25,7 +34,7 @@ public class WhatsAppService {
         return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
                 .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
                 .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendJsonObject(requestBody)
+                .sendForm(jsonToMultiMap(requestBody))
                 .map(response -> response.bodyAsJsonObject());
     }
 
@@ -38,7 +47,7 @@ public class WhatsAppService {
         return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
                 .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
                 .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendJsonObject(requestBody)
+                .sendForm(jsonToMultiMap(requestBody))
                 .map(response -> response.bodyAsJsonObject());
     }
 
@@ -51,7 +60,7 @@ public class WhatsAppService {
         return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
                 .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
                 .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendJsonObject(requestBody)
+                .sendForm(jsonToMultiMap(requestBody))
                 .map(response -> response.bodyAsJsonObject());
     }
 }

@@ -33,5 +33,23 @@
   "payment_issue": {
     "type": "message",
     "message": "Please describe your issue. Our team will contact you soon!"
+  },
+  "feedback": {
+    "type": "button",
+    "message": "Please provide your feedback:",
+    "options": {
+      "1": "Good",
+      "2": "Average",
+      "3": "Bad"
+    },
+    "next": {
+      "1": "thank_you",
+      "2": "thank_you",
+      "3": "thank_you"
+    }
+  },
+  "thank_you": {
+    "type": "message",
+    "message": "Thank you for your feedback!"
   }
 }
