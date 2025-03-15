@@ -1,0 +1,37 @@
+{
+  "start": {
+    "type": "list",
+    "message": "Welcome! Select an option:",
+    "options": {
+      "1": "Order Status",
+      "2": "Support",
+      "3": "Feedback"
+    },
+    "next": {
+      "1": "order_status",
+      "2": "support",
+      "3": "feedback"
+    }
+  },
+  "order_status": {
+    "type": "message",
+    "message": "Enter your Order ID:",
+    "next": "fetch_order_status"
+  },
+  "support": {
+    "type": "list",
+    "message": "Select a category:",
+    "options": {
+      "1": "Payment Issue",
+      "2": "Booking Issue"
+    },
+    "next": {
+      "1": "payment_issue",
+      "2": "booking_issue"
+    }
+  },
+  "payment_issue": {
+    "type": "message",
+    "message": "Please describe your issue. Our team will contact you soon!"
+  }
+}

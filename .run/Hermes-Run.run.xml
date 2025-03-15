@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Hermes-Run" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.flauntik.guice.GuiceVertxLauncher" />
+    <module name="VertxTemplate" />
+    <option name="PROGRAM_PARAMETERS" value="run com.flauntik.verticle.MainVerticle -conf config.json --debug" />
+    <option name="VM_PARAMETERS" value="-Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.Log4j2LogDelegateFactory -Djava.util.logging.config.file=file:logging.properties -Dlog4j2.configurationFile=file:log4j2.properties" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

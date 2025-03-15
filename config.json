@@ -1,0 +1,15 @@
+{
+  "profile": "QA",
+  "port": 8080,
+  "verticleDeploymentOptions": {
+    "HttpVerticle": {
+      "worker": false,
+      "instances": 1
+    },
+    "APIVerticle": {
+      "worker": true,
+      "instances": 1,
+      "workerPoolSize": 20
+    }
+  }
+}

@@ -1,2 +1,2 @@
-# hermes
-Named after Hermes, the Greek messenger god, symbolizing communication
+# Hermes
+Named after Hermes, the Greek messenger god, symbolizing communication. 
