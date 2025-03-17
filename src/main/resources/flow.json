@@ -18,6 +18,15 @@
     "message": "Enter your Order ID:",
     "next": "fetch_order_status"
   },
+  "fetch_order_status": {
+    "type": "function",
+    "action": "fetchOrderStatus",
+    "next": "order_status_result"
+  },
+  "order_status_result": {
+    "type": "message",
+    "message": "Your order status is: {order_status}"
+  },
   "support": {
     "type": "list",
     "message": "Select a category:",
@@ -51,5 +60,24 @@
   "thank_you": {
     "type": "message",
     "message": "Thank you for your feedback!"
+  },
+  "ask_name": {
+    "type": "message",
+    "message": "What is your name?",
+    "next": "ask_age"
+  },
+  "ask_age": {
+    "type": "message",
+    "message": "What is your age?",
+    "next": "send_payment_link"
+  },
+  "send_payment_link": {
+    "type": "function",
+    "action": "sendPaymentLink",
+    "next": "confirm_appointment"
+  },
+  "confirm_appointment": {
+    "type": "message",
+    "message": "Thank you! Your appointment is confirmed."
   }
 }

@@ -13,6 +13,7 @@ public enum FlowStepType{
     MESSAGE("message"),
     LIST("list"),
     BUTTON("button"),
+    FUNCTION("function"),
     UNKNOWN("unknown");
 
     private final String name;
@@ -26,7 +27,7 @@ public enum FlowStepType{
         try {
             return FlowStepType.valueOf(value);
         } catch (Exception e) {
-            FlowStepType result = Arrays.stream(FlowStepType.values()).filter(flowStepType -> flowStepType.name().equals(value)).findFirst().orElse(UNKNOWN);
+            FlowStepType result = Arrays.stream(FlowStepType.values()).filter(flowStepType -> flowStepType.getName().equals(value)).findFirst().orElse(UNKNOWN);
             if (result == UNKNOWN)
                 log.error("Not registered Enum Value : {}, Class : {}", value, FlowStepType.class);
             return result;

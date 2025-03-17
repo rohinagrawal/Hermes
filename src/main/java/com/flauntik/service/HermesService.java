@@ -1,5 +1,6 @@
 package com.flauntik.service;
 
+import com.flauntik.dto.request.IncomingMessageRequest;
 import io.vertx.core.json.JsonObject;
 import jakarta.inject.Inject;
 
@@ -12,7 +13,7 @@ public class HermesService {
         this.messageHandler = messageHandler;
     }
 
-    public void handleIncomingMessage(JsonObject requestBody) {
-        messageHandler.handleIncomingMessage(requestBody);
+    public JsonObject handleIncomingMessage(JsonObject requestBody) {
+        return messageHandler.handleIncomingMessage(requestBody.mapTo(IncomingMessageRequest.class));
     }
 }

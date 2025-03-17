@@ -1,6 +1,8 @@
 package com.flauntik.service;
 
+import com.flauntik.dto.request.IncomingMessageRequest;
 import com.google.inject.Inject;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 public class MessageHandler {
@@ -26,12 +28,19 @@ public class MessageHandler {
                 .onFailure(err -> responseHandler.handle(new JsonObject().put("error", err.getMessage())));
     }
 
-    public JsonObject handleIncomingMessage(JsonObject requestBody) {
-        String userId = requestBody.getString("from");
-        String message = requestBody.getJsonObject("text").getString("body");
+    public JsonObject handleIncomingMessage(IncomingMessageRequest request) {
+        String userId = request.getFrom();
+        String message = request.getText().getBody();
 
         String responseMessage = flowManager.getNextStep(userId, message);
+        Future<JsonObject> responseFuture = whatsAppService.sendMessage(userId, responseMessage);
+        JsonObject response = new JsonObject();
+        if (responseFuture.succeeded()|| true){
+            response.put("message", responseMessage);
+        } else {
+            response.put("error", responseFuture.cause().getMessage());
+        }
 
-        return whatsAppService.sendMessage(userId, responseMessage).onFailure(err -> new RuntimeException(err)).result();
+        return response;
     }
 }

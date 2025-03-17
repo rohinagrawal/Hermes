@@ -1,6 +1,7 @@
 package com.flauntik.verticle;
 
 import com.flauntik.config.HermesConfig;
+import com.flauntik.constant.URIConstant;
 import com.flauntik.dto.response.Response;
 import com.flauntik.service.AdminService;
 import com.flauntik.service.HermesService;
@@ -36,6 +37,7 @@ public class APIVerticle extends AbstractVerticle {
         super.start();
         this.vertx.eventBus().consumer(TEST, (Handler<Message<JsonObject>>) message -> handleMessage(TEST, message));
         this.vertx.eventBus().consumer(SET_LOGGING_EVENT, (Handler<Message<JsonObject>>) message -> handleMessage(SET_LOGGING_EVENT, message));
+        this.vertx.eventBus().consumer(URIConstant.INCOMING_MESSAGE_EVENT, (Handler<Message<JsonObject>>) message -> handleMessage(INCOMING_MESSAGE_EVENT, message));
         startPromise.complete();
     }
 
@@ -79,8 +81,7 @@ public class APIVerticle extends AbstractVerticle {
                 response = adminService.setLogLevel(messageJO);
             }
             case INCOMING_MESSAGE_EVENT -> {
-                hermesService.handleIncomingMessage(messageJO);
-                response = Response.getSuccessResponse();
+                response = Response.getSuccessResponse(hermesService.handleIncomingMessage(messageJO));
             }
             default ->
                     throw new ReplyException(ReplyFailure.NO_HANDLERS, HttpStatus.SC_NOT_FOUND, "No Handler Configured");

@@ -13,6 +13,8 @@ public class FlowStep {
     private FlowStepType type;
     private String message;
     private Map<String, String> options;
+    private String action;
+
     @JsonDeserialize(using = NextFieldDeserializer.class)
     private Object next;
 }
