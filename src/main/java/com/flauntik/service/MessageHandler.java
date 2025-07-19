@@ -33,9 +33,10 @@ public class MessageHandler {
         String message = request.getText().getBody();
 
         String responseMessage = flowManager.getNextStep(userId, message);
-        Future<JsonObject> responseFuture = whatsAppService.sendMessage(userId, responseMessage);
+//        Future<JsonObject> responseFuture = whatsAppService.sendMessage(userId, responseMessage);
+        Future<JsonObject> responseFuture = Future.succeededFuture();
         JsonObject response = new JsonObject();
-        if (responseFuture.succeeded()|| true){
+        if (responseFuture.succeeded()){
             response.put("message", responseMessage);
         } else {
             response.put("error", responseFuture.cause().getMessage());

@@ -23,7 +23,7 @@ public class FlowManager {
     public FlowManager(){
         userState = new ConcurrentHashMap<>();
         userHistory = new ConcurrentHashMap<>();
-        this.flow = CommonUtil.mapper.readValue(Files.readAllBytes(Paths.get("src/main/resources/flow.json")), new TypeReference<Map<String, FlowStep>>() {});
+        this.flow = CommonUtil.mapper.readValue(Files.readAllBytes(Paths.get("src/main/resources/flow.json")), new TypeReference<>() {});
     }
 
     public String getNextStep(String userId, String input) {
