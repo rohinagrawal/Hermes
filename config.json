@@ -12,11 +12,19 @@
       "workerPoolSize": 20
     }
   },
+  "whatsAppCloudApiVerifyToken": "REPLACE_ME_CLOUD_API_VERIFY_TOKEN",
+  "whatsAppCloudApiAppSecret": "REPLACE_ME_CLOUD_API_APP_SECRET",
   "orgs": {
     "demo": {
+      "provider": "TWILIO",
       "twilioAccountSid": "REPLACE_ME_TWILIO_ACCOUNT_SID",
       "twilioAuthToken": "REPLACE_ME_TWILIO_AUTH_TOKEN",
       "twilioFromWhatsAppNumber": "whatsapp:+REPLACE_ME"
+    },
+    "demo_direct": {
+      "provider": "WHATSAPP_CLOUD_API",
+      "cloudApiPhoneNumberId": "REPLACE_ME_CLOUD_API_PHONE_NUMBER_ID",
+      "cloudApiAccessToken": "REPLACE_ME_CLOUD_API_ACCESS_TOKEN"
     }
   }
 }

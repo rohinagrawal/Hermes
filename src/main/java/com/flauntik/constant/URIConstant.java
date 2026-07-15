@@ -39,8 +39,15 @@ public interface URIConstant {
     String TEST = BASE_URI + "/test";
     String INCOMING_MESSAGE = BASE_URI + "/:orgId/incoming_message";
 
+    /** Per-org real provider webhook (Twilio: one webhook URL per WhatsApp number, configured per org). */
+    String ORG_WEBHOOK = BASE_URI + "/:orgId/webhook";
+    /** Shared provider-agnostic webhook (Meta WhatsApp Cloud API: one app-level webhook for all numbers/orgs). */
+    String WHATSAPP_CLOUD_API_WEBHOOK = BASE_URI + "/webhook/whatsapp";
+
     String SET_LOGGING = BASE_ADMIN_URI + "/set_logging";
     String LIST_ORGS = BASE_ADMIN_URI + "/orgs";
+
+    String ORG_ID_PARAM = "orgId";
 
     /*Events*/
     String TEST_EVENT = "test";

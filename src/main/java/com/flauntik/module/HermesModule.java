@@ -1,12 +1,17 @@
 package com.flauntik.module;
 
 import com.flauntik.config.HermesConfig;
+import com.flauntik.enums.WhatsAppProviderType;
+import com.flauntik.service.channel.OutboundMessageSender;
+import com.flauntik.service.channel.TwilioMessageSender;
+import com.flauntik.service.channel.WhatsAppCloudApiMessageSender;
 import com.flauntik.service.payment.MockPaymentProvider;
 import com.flauntik.service.payment.PaymentProvider;
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
@@ -44,6 +49,11 @@ public class HermesModule extends AbstractModule {
         bind(Vertx.class).toInstance(vertx);
         bind(EventBus.class).toInstance(vertx.eventBus());
         bind(PaymentProvider.class).to(MockPaymentProvider.class);
+
+        MapBinder<WhatsAppProviderType, OutboundMessageSender> senderBinder =
+                MapBinder.newMapBinder(binder(), WhatsAppProviderType.class, OutboundMessageSender.class);
+        senderBinder.addBinding(WhatsAppProviderType.TWILIO).to(TwilioMessageSender.class);
+        senderBinder.addBinding(WhatsAppProviderType.WHATSAPP_CLOUD_API).to(WhatsAppCloudApiMessageSender.class);
     }
 
     @Provides
