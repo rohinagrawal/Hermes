@@ -38,3 +38,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Agents ###
+.claude
+.cursor
+.codex
