@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "validation_command": "python3 .agents/scripts/validate-agent-assets.py",
+  "hosts": ["claude", "codex", "cursor"],
+  "assets": [
+    {
+      "id": "agent-guide",
+      "kind": "guide",
+      "source": ".agents/README.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/README.md"]
+    },
+    {
+      "id": "env-template",
+      "kind": "config",
+      "source": ".agents/.env.example",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/README.md"]
+    },
+    {
+      "id": "rule-agent-asset-maintenance",
+      "kind": "rule",
+      "source": ".agents/rules/agent-asset-maintenance.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/rules/agent-asset-maintenance.md"]
+    },
+    {
+      "id": "rule-maven-build",
+      "kind": "rule",
+      "source": ".agents/rules/maven-build.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/rules/maven-build.md"]
+    },
+    {
+      "id": "rule-hermes-architecture",
+      "kind": "rule",
+      "source": ".agents/rules/hermes-architecture.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/rules/hermes-architecture.md"]
+    },
+    {
+      "id": "skill-agents-bootstrap",
+      "kind": "skill",
+      "source": ".agents/skills/agents-bootstrap/SKILL.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/skills/agents-bootstrap/SKILL.md"]
+    }
+  ],
+  "mcp_startups": []
+}
