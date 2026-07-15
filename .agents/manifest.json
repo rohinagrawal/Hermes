@@ -39,6 +39,13 @@
       "docs": [".agents/rules/hermes-architecture.md"]
     },
     {
+      "id": "rule-flow-authoring",
+      "kind": "rule",
+      "source": ".agents/rules/flow-authoring.md",
+      "hosts": ["claude", "codex", "cursor"],
+      "docs": [".agents/rules/flow-authoring.md"]
+    },
+    {
       "id": "skill-agents-bootstrap",
       "kind": "skill",
       "source": ".agents/skills/agents-bootstrap/SKILL.md",
