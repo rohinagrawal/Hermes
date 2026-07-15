@@ -37,15 +37,16 @@ public interface URIConstant {
     String BASE_ADMIN_URI = BASE_URI + "/admin";
 
     String TEST = BASE_URI + "/test";
-    String INCOMING_MESSAGE = BASE_URI + "/incoming_message";
+    String INCOMING_MESSAGE = BASE_URI + "/:orgId/incoming_message";
 
     String SET_LOGGING = BASE_ADMIN_URI + "/set_logging";
-
+    String LIST_ORGS = BASE_ADMIN_URI + "/orgs";
 
     /*Events*/
     String TEST_EVENT = "test";
     String SET_LOGGING_EVENT = "setLogging";
     String INCOMING_MESSAGE_EVENT = "incomingMessage";
+    String LIST_ORGS_EVENT = "listOrgs";
 
 
 

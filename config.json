@@ -11,5 +11,12 @@
       "instances": 1,
       "workerPoolSize": 20
     }
+  },
+  "orgs": {
+    "demo": {
+      "twilioAccountSid": "REPLACE_ME_TWILIO_ACCOUNT_SID",
+      "twilioAuthToken": "REPLACE_ME_TWILIO_AUTH_TOKEN",
+      "twilioFromWhatsAppNumber": "whatsapp:+REPLACE_ME"
+    }
   }
 }

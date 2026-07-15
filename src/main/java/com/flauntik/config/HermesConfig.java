@@ -12,4 +12,13 @@ public class HermesConfig {
     private String profile;
     private Integer port;
     private Map<String, DeploymentOptions> verticleDeploymentOptions;
+    private Map<String, OrgConfig> orgs;
+
+    public OrgConfig getOrgConfig(String orgId) {
+        OrgConfig orgConfig = orgs == null ? null : orgs.get(orgId);
+        if (orgConfig == null) {
+            throw new IllegalArgumentException("No org configured with id: " + orgId);
+        }
+        return orgConfig;
+    }
 }

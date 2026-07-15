@@ -2,6 +2,8 @@ package com.flauntik.service;
 
 import com.flauntik.dto.request.LoggingRequest;
 import com.flauntik.dto.response.Response;
+import com.flauntik.service.flow.OrgFlowRegistry;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.log4j.Log4j2;
@@ -10,20 +12,38 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Singleton
 @Log4j2
 public class AdminService {
+
+    private final OrgFlowRegistry orgFlowRegistry;
+
+    @Inject
+    public AdminService(OrgFlowRegistry orgFlowRegistry) {
+        this.orgFlowRegistry = orgFlowRegistry;
+    }
 
     //https://stackoverflow.com/a/65151249
     public Response setLogLevel(JsonObject messageJO) {
         LoggingRequest request = messageJO.mapTo(LoggingRequest.class);
         LoggerContext ctx = (LoggerContext) LogManager.getContext(this.getClass().getClassLoader(), false);
         Configuration config = ctx.getConfiguration();
-        LoggerConfig loggerConfig = config.getLoggerConfig("com.makemytrip");
+        LoggerConfig loggerConfig = config.getLoggerConfig("com.flauntik");
         loggerConfig.setLevel(request.getLevel());
         ctx.updateLoggers();
         log.info("Logging Level Changed to {}", request.getLevel());
         log.debug("Debug check Logging Level Changed to {}", request.getLevel());
         return Response.getSuccessResponse();
+    }
+
+    public Map<String, Object> listOrgs() {
+        Map<String, Object> orgs = new LinkedHashMap<>();
+        for (String orgId : orgFlowRegistry.getOrgIds()) {
+            orgs.put(orgId, Map.of("stepCount", orgFlowRegistry.getStepCount(orgId), "validated", true));
+        }
+        return orgs;
     }
 }

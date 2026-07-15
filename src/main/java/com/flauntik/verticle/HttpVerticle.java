@@ -57,8 +57,9 @@ public class HttpVerticle extends AbstractVerticle {
         router.get(URIConstant.HEALTH_CHECK_API).produces(ContentType.APPLICATION_JSON.toString()).handler(healthCheckHandler);
         router.get(URIConstant.TEST).produces(ContentType.APPLICATION_JSON.getMimeType()).handler(rc -> apiHandler(rc, URIConstant.TEST_EVENT));
         router.post(URIConstant.SET_LOGGING).produces(ContentType.APPLICATION_JSON.getMimeType()).consumes(ContentType.APPLICATION_JSON.getMimeType()).handler(rc -> apiHandler(rc, URIConstant.SET_LOGGING_EVENT));
+        router.get(URIConstant.LIST_ORGS).produces(ContentType.APPLICATION_JSON.getMimeType()).handler(rc -> apiHandler(rc, URIConstant.LIST_ORGS_EVENT));
 
-        // Webhook for receiving WhatsApp messages
+        // Webhook for receiving WhatsApp messages, routed per org via the :orgId path segment
         router.post(URIConstant.INCOMING_MESSAGE).consumes(ContentType.APPLICATION_JSON.getMimeType()).handler(rc -> apiHandler(rc, URIConstant.INCOMING_MESSAGE_EVENT));
 
         registerHCHandler(healthCheckHandler);
@@ -95,6 +96,7 @@ public class HttpVerticle extends AbstractVerticle {
             try {
                 JsonObject bodyAndParams = putParamsWithBody(routingContext.request().params().entries(),
                         routingContext.body() == null ? null : routingContext.body().asJsonObject());
+                routingContext.pathParams().forEach(bodyAndParams::put);
 
                 //setting eventBus's reply timeout
                 vertx.eventBus().request(address, bodyAndParams, new DeliveryOptions().setHeaders(routingContext.request().headers()).setSendTimeout(timeout), (Handler<AsyncResult<Message<JsonObject>>>) asyncResult -> {

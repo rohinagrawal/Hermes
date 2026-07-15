@@ -13,7 +13,9 @@ public enum FlowStepType{
     MESSAGE("message"),
     LIST("list"),
     BUTTON("button"),
-    FUNCTION("function"),
+    API_CALL("api_call"),
+    PAYMENT("payment"),
+    MEDIA("media"),
     UNKNOWN("unknown");
 
     private final String name;

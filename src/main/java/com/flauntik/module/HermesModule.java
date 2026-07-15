@@ -1,6 +1,8 @@
 package com.flauntik.module;
 
 import com.flauntik.config.HermesConfig;
+import com.flauntik.service.payment.MockPaymentProvider;
+import com.flauntik.service.payment.PaymentProvider;
 import com.google.common.base.Preconditions;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -41,6 +43,7 @@ public class HermesModule extends AbstractModule {
     protected void configure() {
         bind(Vertx.class).toInstance(vertx);
         bind(EventBus.class).toInstance(vertx.eventBus());
+        bind(PaymentProvider.class).to(MockPaymentProvider.class);
     }
 
     @Provides
