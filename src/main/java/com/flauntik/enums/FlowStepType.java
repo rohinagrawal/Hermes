@@ -16,6 +16,8 @@ public enum FlowStepType{
     API_CALL("api_call"),
     PAYMENT("payment"),
     MEDIA("media"),
+    BRANCH("branch"),
+    ACTION("action"),
     UNKNOWN("unknown");
 
     private final String name;

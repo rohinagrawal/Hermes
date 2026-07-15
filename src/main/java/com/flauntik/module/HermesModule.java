@@ -2,6 +2,8 @@ package com.flauntik.module;
 
 import com.flauntik.config.HermesConfig;
 import com.flauntik.enums.WhatsAppProviderType;
+import com.flauntik.service.action.SlotAvailabilityHandler;
+import com.flauntik.service.action.StepActionHandler;
 import com.flauntik.service.channel.OutboundMessageSender;
 import com.flauntik.service.channel.TwilioMessageSender;
 import com.flauntik.service.channel.WhatsAppCloudApiMessageSender;
@@ -54,6 +56,12 @@ public class HermesModule extends AbstractModule {
                 MapBinder.newMapBinder(binder(), WhatsAppProviderType.class, OutboundMessageSender.class);
         senderBinder.addBinding(WhatsAppProviderType.TWILIO).to(TwilioMessageSender.class);
         senderBinder.addBinding(WhatsAppProviderType.WHATSAPP_CLOUD_API).to(WhatsAppCloudApiMessageSender.class);
+
+        // Named in-process handlers a flow's ACTION step can invoke. Register new business
+        // logic here by name; flows reference it via {"type":"action","action":"<name>"}.
+        MapBinder<String, StepActionHandler> actionBinder =
+                MapBinder.newMapBinder(binder(), String.class, StepActionHandler.class);
+        actionBinder.addBinding("check_slot_availability").to(SlotAvailabilityHandler.class);
     }
 
     @Provides

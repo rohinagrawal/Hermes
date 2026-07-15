@@ -4,6 +4,7 @@ import com.flauntik.enums.FlowStepType;
 import com.flauntik.pojo.FlowStep;
 import com.flauntik.pojo.FlowStepResult;
 import com.flauntik.pojo.payment.PaymentRequest;
+import com.flauntik.service.action.StepActionHandler;
 import com.flauntik.service.flow.OrgFlowRegistry;
 import com.flauntik.service.payment.PaymentProvider;
 import com.flauntik.util.TemplateUtil;
@@ -32,16 +33,19 @@ public class FlowManager {
     private final ApiCallService apiCallService;
     private final PaymentProvider paymentProvider;
     private final LlmAgentService llmAgentService;
+    private final Map<String, StepActionHandler> actionHandlers;
 
     private final Map<String, String> userState = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> userContext = new ConcurrentHashMap<>();
 
     @Inject
-    public FlowManager(OrgFlowRegistry orgFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider, LlmAgentService llmAgentService) {
+    public FlowManager(OrgFlowRegistry orgFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider,
+                       LlmAgentService llmAgentService, Map<String, StepActionHandler> actionHandlers) {
         this.orgFlowRegistry = orgFlowRegistry;
         this.apiCallService = apiCallService;
         this.paymentProvider = paymentProvider;
         this.llmAgentService = llmAgentService;
+        this.actionHandlers = actionHandlers;
     }
 
     public Future<FlowStepResult> getNextStep(String orgId, String userId, String input) {
@@ -104,8 +108,61 @@ public class FlowManager {
                 return cascade(orgId, key, resolveBranchNext(resolvedStep, success), flow, context);
             });
             case PAYMENT -> executePayment(orgId, key, resolvedStep, flow, context);
+            case ACTION -> executeAction(orgId, key, resolvedStep, flow, context);
+            case BRANCH -> cascade(orgId, key, resolveBranchStep(resolvedStep, context), flow, context);
             default -> Future.failedFuture(new IllegalStateException("Unsupported step type " + step.getType() + " for step " + resolvedStepId));
         };
+    }
+
+    /**
+     * Evaluates a BRANCH step's rules against the user's accumulated context and returns
+     * the next step id. Each rule's {@code when} is templated (so it can reference an
+     * answer from any earlier step, e.g. {@code {{patient_type}}}) and compared to
+     * {@code equals}; first match wins. If nothing matches, the step's default
+     * {@code next} is used. This is how a choice made early changes the flow much later.
+     */
+    private String resolveBranchStep(FlowStep step, Map<String, Object> context) {
+        if (step.getBranches() != null) {
+            for (var branch : step.getBranches()) {
+                String actual = TemplateUtil.render(branch.getWhen(), context);
+                if (actual != null && actual.equals(branch.getEquals())) {
+                    return branch.getNext();
+                }
+            }
+        }
+        return (String) step.getNext();
+    }
+
+    /**
+     * Runs a named in-process handler (registered in HermesModule's action MapBinder),
+     * merges whatever it returns into the user's context, and cascades on the outcome —
+     * the in-process twin of {@code executePayment}/API_CALL. A handler signals failure by
+     * returning {@code ACTION_SUCCESS=false} or failing its Future; either takes the
+     * step's `failure` branch. The handler name is checked at startup by FlowValidator, so
+     * a missing handler here is a guarded should-never-happen.
+     */
+    private Future<FlowStepResult> executeAction(String orgId, String key, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {
+        StepActionHandler handler = actionHandlers.get(step.getAction());
+        if (handler == null) {
+            log.error("org={} flow references unregistered action '{}'", orgId, step.getAction());
+            context.put(StepActionHandler.ACTION_ERROR, "unregistered action: " + step.getAction());
+            return cascade(orgId, key, resolveBranchNext(step, false), flow, context);
+        }
+
+        Map<String, String> params = TemplateUtil.renderMap(step.getActionParams(), context);
+        return handler.execute(params, context)
+                .compose(result -> {
+                    if (result != null) {
+                        context.putAll(result);
+                    }
+                    boolean success = result == null || !Boolean.FALSE.equals(result.get(StepActionHandler.ACTION_SUCCESS));
+                    return cascade(orgId, key, resolveBranchNext(step, success), flow, context);
+                })
+                .recover(err -> {
+                    log.error("ACTION '{}' failed for org={}", step.getAction(), orgId, err);
+                    context.put(StepActionHandler.ACTION_ERROR, err.getMessage());
+                    return cascade(orgId, key, resolveBranchNext(step, false), flow, context);
+                });
     }
 
     private Future<FlowStepResult> executePayment(String orgId, String key, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {

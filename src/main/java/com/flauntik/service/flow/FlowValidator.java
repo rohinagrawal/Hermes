@@ -1,15 +1,26 @@
 package com.flauntik.service.flow;
 
+import com.flauntik.pojo.Branch;
 import com.flauntik.pojo.FlowStep;
+import com.flauntik.service.action.StepActionHandler;
+import com.google.inject.Inject;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Log4j2
 public class FlowValidator {
+
+    private final Set<String> registeredActions;
+
+    @Inject
+    public FlowValidator(Map<String, StepActionHandler> actionHandlers) {
+        this.registeredActions = actionHandlers.keySet();
+    }
 
     /**
      * Validates one org's flow graph, collecting every error found rather than
@@ -66,10 +77,42 @@ public class FlowValidator {
                     }
                     validateNextTargets(prefix, flow, errors, plainNextTargets(step));
                 }
+                case BRANCH -> validateBranch(prefix, flow, step, errors);
+                case ACTION -> {
+                    if (isBlank(step.getAction())) {
+                        errors.add(prefix + "ACTION requires an 'action' handler name");
+                    } else if (!registeredActions.contains(step.getAction())) {
+                        errors.add(prefix + "ACTION references unregistered handler '" + step.getAction()
+                                + "' (registered: " + registeredActions + ")");
+                    }
+                    validateNextTargets(prefix, flow, errors, plainNextTargets(step));
+                }
                 case UNKNOWN -> errors.add(prefix + "unrecognized step type");
             }
         }
         return errors;
+    }
+
+    private void validateBranch(String prefix, Map<String, FlowStep> flow, FlowStep step, List<String> errors) {
+        List<Branch> branches = step.getBranches();
+        if (branches == null || branches.isEmpty()) {
+            errors.add(prefix + "BRANCH requires a non-empty 'branches' list");
+        } else {
+            List<String> branchTargets = new ArrayList<>();
+            for (Branch branch : branches) {
+                if (isBlank(branch.getWhen()) || branch.getEquals() == null) {
+                    errors.add(prefix + "each branch requires a 'when' expression and an 'equals' value");
+                }
+                branchTargets.add(branch.getNext());
+            }
+            validateNextTargets(prefix, flow, errors, branchTargets);
+        }
+        // `next` is the default target taken when no branch matches — must be a plain step id.
+        if (!(step.getNext() instanceof String)) {
+            errors.add(prefix + "BRANCH requires a default 'next' step id for when no branch matches");
+        } else {
+            validateNextTargets(prefix, flow, errors, plainNextTargets(step));
+        }
     }
 
     @SuppressWarnings("unchecked")

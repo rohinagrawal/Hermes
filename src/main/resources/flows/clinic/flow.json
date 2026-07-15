@@ -7,8 +7,20 @@
       "2": "Clinic hours & address"
     },
     "next": {
-      "1": "collect_name",
+      "1": "patient_type",
       "2": "clinic_info"
+    }
+  },
+  "patient_type": {
+    "type": "list",
+    "message": "Have you visited us before?",
+    "options": {
+      "1": "I'm a new patient",
+      "2": "I'm a returning patient"
+    },
+    "next": {
+      "1": "collect_name",
+      "2": "collect_name"
     }
   },
   "collect_name": {
@@ -24,13 +36,44 @@
   "collect_slot": {
     "type": "message",
     "message": "Got it. What day and time works best for you? (e.g. 'Tomorrow 4 PM')",
-    "next": "take_payment"
+    "next": "check_availability"
   },
-  "take_payment": {
+  "check_availability": {
+    "type": "action",
+    "action": "check_slot_availability",
+    "actionParams": { "slot": "{{collect_slot}}" },
+    "next": {
+      "success": "route_fee",
+      "failure": "slot_unavailable"
+    }
+  },
+  "slot_unavailable": {
+    "type": "message",
+    "message": "Sorry, {{availabilityNote}} - please pick another day and time.",
+    "next": "collect_slot"
+  },
+  "route_fee": {
+    "type": "branch",
+    "branches": [
+      { "when": "{{patient_type}}", "equals": "1", "next": "take_payment_new" }
+    ],
+    "next": "take_payment_returning"
+  },
+  "take_payment_new": {
+    "type": "payment",
+    "paymentAmount": "700",
+    "paymentCurrency": "INR",
+    "paymentDescription": "First consultation (incl. one-time registration): {{collect_reason}}",
+    "next": {
+      "success": "booking_confirmed",
+      "failure": "booking_failed"
+    }
+  },
+  "take_payment_returning": {
     "type": "payment",
     "paymentAmount": "500",
     "paymentCurrency": "INR",
-    "paymentDescription": "BrightCare consultation: {{collect_reason}}",
+    "paymentDescription": "Consultation: {{collect_reason}}",
     "next": {
       "success": "booking_confirmed",
       "failure": "booking_failed"
@@ -38,7 +81,7 @@
   },
   "booking_confirmed": {
     "type": "message",
-    "message": "All set, {{collect_name}}!\n\nConsultation: {{collect_reason}}\nPreferred time: {{collect_slot}}\nPay Rs.500 to confirm your slot: {{paymentLink}}\nReference: {{paymentReferenceId}}\n\nOnce payment is received your slot is locked and we'll send a reminder. Reply with anything to return to the menu.",
+    "message": "All set, {{collect_name}}!\n\nConsultation: {{collect_reason}}\nPreferred time: {{collect_slot}}\nComplete your payment here to confirm your slot: {{paymentLink}}\nReference: {{paymentReferenceId}}\n\nOnce payment is received your slot is locked and we'll send a reminder. Reply with anything to return to the menu.",
     "next": "start"
   },
   "booking_failed": {
