@@ -14,6 +14,8 @@
   },
   "whatsAppCloudApiVerifyToken": "REPLACE_ME_CLOUD_API_VERIFY_TOKEN",
   "whatsAppCloudApiAppSecret": "REPLACE_ME_CLOUD_API_APP_SECRET",
+  "sessionTtlMinutes": 5,
+  "sessionMaxSize": 10000,
   "orgs": {
     "demo": {
       "provider": "TWILIO",

@@ -22,6 +22,13 @@ public class HermesConfig {
     private String whatsAppCloudApiVerifyToken;
     private String whatsAppCloudApiAppSecret;
 
+    /**
+     * Conversation session cache tuning (see {@code service/session/SessionStore}).
+     * Null = use defaults (5 min idle TTL, 10 000-session LRU cap).
+     */
+    private Integer sessionTtlMinutes;
+    private Integer sessionMaxSize;
+
     public OrgConfig getOrgConfig(String orgId) {
         OrgConfig orgConfig = orgs == null ? null : orgs.get(orgId);
         if (orgConfig == null) {
