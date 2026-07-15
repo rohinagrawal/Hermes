@@ -31,15 +31,17 @@ public class FlowManager {
     private final OrgFlowRegistry orgFlowRegistry;
     private final ApiCallService apiCallService;
     private final PaymentProvider paymentProvider;
+    private final LlmAgentService llmAgentService;
 
     private final Map<String, String> userState = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> userContext = new ConcurrentHashMap<>();
 
     @Inject
-    public FlowManager(OrgFlowRegistry orgFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider) {
+    public FlowManager(OrgFlowRegistry orgFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider, LlmAgentService llmAgentService) {
         this.orgFlowRegistry = orgFlowRegistry;
         this.apiCallService = apiCallService;
         this.paymentProvider = paymentProvider;
+        this.llmAgentService = llmAgentService;
     }
 
     public Future<FlowStepResult> getNextStep(String orgId, String userId, String input) {
@@ -69,7 +71,7 @@ public class FlowManager {
                 Map<String, String> nextMap = (Map<String, String>) currentStep.getNext();
                 String nextId = nextMap.get(input);
                 yield nextId == null
-                        ? Future.succeededFuture(renderInvalidInput(currentStep, context))
+                        ? handleUnmatchedInput(orgId, currentStep, input, context)
                         : cascade(orgId, key, nextId, flow, context);
             }
             case MESSAGE, MEDIA -> cascade(orgId, key, (String) currentStep.getNext(), flow, context);
@@ -161,6 +163,32 @@ public class FlowManager {
             result.setContentVariables(TemplateUtil.renderMap(step.getContentVariables(), context));
         }
         return result;
+    }
+
+    /**
+     * The user typed something that isn't a valid menu option. If the org has the LLM
+     * fallback enabled, let the agent answer the off-script message and then re-show the
+     * menu; otherwise fall back to the canned "invalid input" re-prompt. The user stays
+     * parked on the same menu step either way.
+     */
+    private Future<FlowStepResult> handleUnmatchedInput(String orgId, FlowStep step, String input, Map<String, Object> context) {
+        if (!llmAgentService.isAvailableFor(orgId)) {
+            return Future.succeededFuture(renderInvalidInput(step, context));
+        }
+
+        String menuText = renderStep(step, context).getMessage();
+        return llmAgentService.generateReply(orgId, input, menuText)
+                .map(reply -> {
+                    FlowStepResult result = renderStep(step, context);
+                    result.setMessage((reply == null || reply.isBlank())
+                            ? "Sorry, I didn't quite get that.\n\n" + menuText
+                            : reply + "\n\n" + menuText);
+                    return result;
+                })
+                .otherwise(err -> {
+                    log.error("LLM fallback failed for org={}, using default re-prompt", orgId, err);
+                    return renderInvalidInput(step, context);
+                });
     }
 
     private FlowStepResult renderInvalidInput(FlowStep step, Map<String, Object> context) {

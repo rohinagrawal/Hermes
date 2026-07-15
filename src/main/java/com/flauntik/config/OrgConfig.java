@@ -15,4 +15,6 @@ public class OrgConfig {
 
     private String cloudApiPhoneNumberId;
     private String cloudApiAccessToken;
+
+    private LlmConfig llm;
 }

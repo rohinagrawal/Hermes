@@ -1,0 +1,54 @@
+{
+  "start": {
+    "type": "list",
+    "message": "Welcome to BrightCare Clinic! How can we help you today?\n(You can also just type your question and our assistant will reply.)",
+    "options": {
+      "1": "Book a consultation",
+      "2": "Clinic hours & address"
+    },
+    "next": {
+      "1": "collect_name",
+      "2": "clinic_info"
+    }
+  },
+  "collect_name": {
+    "type": "message",
+    "message": "Sure, let's get you booked. What's your full name?",
+    "next": "collect_reason"
+  },
+  "collect_reason": {
+    "type": "message",
+    "message": "Thanks {{collect_name}}! In a sentence, what would you like to consult about?",
+    "next": "collect_slot"
+  },
+  "collect_slot": {
+    "type": "message",
+    "message": "Got it. What day and time works best for you? (e.g. 'Tomorrow 4 PM')",
+    "next": "take_payment"
+  },
+  "take_payment": {
+    "type": "payment",
+    "paymentAmount": "500",
+    "paymentCurrency": "INR",
+    "paymentDescription": "BrightCare consultation: {{collect_reason}}",
+    "next": {
+      "success": "booking_confirmed",
+      "failure": "booking_failed"
+    }
+  },
+  "booking_confirmed": {
+    "type": "message",
+    "message": "All set, {{collect_name}}!\n\nConsultation: {{collect_reason}}\nPreferred time: {{collect_slot}}\nPay Rs.500 to confirm your slot: {{paymentLink}}\nReference: {{paymentReferenceId}}\n\nOnce payment is received your slot is locked and we'll send a reminder. Reply with anything to return to the menu.",
+    "next": "start"
+  },
+  "booking_failed": {
+    "type": "message",
+    "message": "Sorry {{collect_name}}, we couldn't set up the payment just now. Please try again in a bit. Reply with anything to return to the menu.",
+    "next": "start"
+  },
+  "clinic_info": {
+    "type": "message",
+    "message": "BrightCare Clinic\n12 MG Road, Bengaluru\nMon-Sat, 9 AM - 7 PM\n+91 80 1234 5678\n\nReply with anything to return to the menu.",
+    "next": "start"
+  }
+}
