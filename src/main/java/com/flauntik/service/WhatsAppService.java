@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * Dispatches outbound WhatsApp sends to the right provider-specific
- * {@link OutboundMessageSender} for each org, based on {@code OrgConfig.provider}.
+ * {@link OutboundMessageSender} for each tenant, based on {@code TenantConfig.provider}.
  */
 public class WhatsAppService {
 
@@ -24,20 +24,20 @@ public class WhatsAppService {
         this.sendersByProvider = sendersByProvider;
     }
 
-    public Future<JsonObject> sendMessage(String orgId, String to, String message) {
-        return senderFor(orgId).sendMessage(orgId, to, message);
+    public Future<JsonObject> sendMessage(String tenantId, String to, String message) {
+        return senderFor(tenantId).sendMessage(tenantId, to, message);
     }
 
-    public Future<JsonObject> sendMediaMessage(String orgId, String to, String mediaUrl, String caption) {
-        return senderFor(orgId).sendMediaMessage(orgId, to, mediaUrl, caption);
+    public Future<JsonObject> sendMediaMessage(String tenantId, String to, String mediaUrl, String caption) {
+        return senderFor(tenantId).sendMediaMessage(tenantId, to, mediaUrl, caption);
     }
 
-    public Future<JsonObject> sendTemplateMessage(String orgId, String to, String contentSid, Map<String, String> contentVariables) {
-        return senderFor(orgId).sendTemplateMessage(orgId, to, contentSid, contentVariables);
+    public Future<JsonObject> sendTemplateMessage(String tenantId, String to, String contentSid, Map<String, String> contentVariables) {
+        return senderFor(tenantId).sendTemplateMessage(tenantId, to, contentSid, contentVariables);
     }
 
-    private OutboundMessageSender senderFor(String orgId) {
-        WhatsAppProviderType provider = hermesConfig.getOrgConfig(orgId).getProvider();
+    private OutboundMessageSender senderFor(String tenantId) {
+        WhatsAppProviderType provider = hermesConfig.getTenantConfig(tenantId).getProvider();
         OutboundMessageSender sender = sendersByProvider.get(provider);
         if (sender == null) {
             throw new IllegalStateException("No OutboundMessageSender bound for provider: " + provider);

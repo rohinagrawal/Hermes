@@ -16,9 +16,9 @@ import java.security.MessageDigest;
 /**
  * Parses Meta's WhatsApp Cloud API webhook payload
  * ({@code entry[0].changes[0].value.messages[0]}). Unlike Twilio, Meta delivers every
- * number's messages to one app-level webhook URL, so the org is resolved from the
+ * number's messages to one app-level webhook URL, so the tenant is resolved from the
  * payload's {@code phone_number_id} rather than a path segment - see
- * {@link HermesConfig#findOrgIdByCloudApiPhoneNumberId}.
+ * {@link HermesConfig#findTenantIdByCloudApiPhoneNumberId}.
  */
 @Log4j2
 public class WhatsAppCloudApiInboundAdapter implements InboundChannelAdapter {
@@ -38,10 +38,10 @@ public class WhatsAppCloudApiInboundAdapter implements InboundChannelAdapter {
         JsonObject value = extractValue(ctx.body().asJsonObject());
 
         String phoneNumberId = value.getJsonObject("metadata", new JsonObject()).getString("phone_number_id");
-        String orgId = hermesConfig.findOrgIdByCloudApiPhoneNumberId(phoneNumberId);
-        if (orgId == null) {
+        String tenantId = hermesConfig.findTenantIdByCloudApiPhoneNumberId(phoneNumberId);
+        if (tenantId == null) {
             throw new IllegalArgumentException(
-                    "No org configured for WhatsApp Cloud API phone_number_id: " + phoneNumberId);
+                    "No tenant configured for WhatsApp Cloud API phone_number_id: " + phoneNumberId);
         }
 
         JsonObject message = value.getJsonArray("messages", new JsonArray()).getJsonObject(0);
@@ -52,7 +52,7 @@ public class WhatsAppCloudApiInboundAdapter implements InboundChannelAdapter {
         String body = message.getJsonObject("text", new JsonObject()).getString("body");
 
         return new JsonObject()
-                .put("orgId", orgId)
+                .put("tenantId", tenantId)
                 .put("from", from)
                 .put("text", new JsonObject().put("body", body));
     }

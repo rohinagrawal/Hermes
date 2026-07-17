@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class OrgConfig {
+public class TenantConfig {
     private WhatsAppProviderType provider = WhatsAppProviderType.TWILIO;
 
     private String twilioAccountSid;

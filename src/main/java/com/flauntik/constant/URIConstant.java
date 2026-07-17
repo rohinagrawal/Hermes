@@ -37,24 +37,19 @@ public interface URIConstant {
     String BASE_ADMIN_URI = BASE_URI + "/admin";
 
     String TEST = BASE_URI + "/test";
-    String INCOMING_MESSAGE = BASE_URI + "/:orgId/incoming_message";
+    String INCOMING_MESSAGE = BASE_URI + "/:tenantId/incoming_message";
 
-    /** Per-org real provider webhook (Twilio: one webhook URL per WhatsApp number, configured per org). */
-    String ORG_WEBHOOK = BASE_URI + "/:orgId/webhook";
-    /** Shared provider-agnostic webhook (Meta WhatsApp Cloud API: one app-level webhook for all numbers/orgs). */
+    /** Per-tenant real provider webhook (Twilio: one webhook URL per WhatsApp number, configured per tenant). */
+    String TENANT_WEBHOOK = BASE_URI + "/:tenantId/webhook";
+    /** Shared provider-agnostic webhook (Meta WhatsApp Cloud API: one app-level webhook for all numbers/tenants). */
     String WHATSAPP_CLOUD_API_WEBHOOK = BASE_URI + "/webhook/whatsapp";
 
     String SET_LOGGING = BASE_ADMIN_URI + "/set_logging";
-    String LIST_ORGS = BASE_ADMIN_URI + "/orgs";
-
-    String ORG_ID_PARAM = "orgId";
+    String LIST_TENANTS = BASE_ADMIN_URI + "/tenants";
 
     /*Events*/
     String TEST_EVENT = "test";
     String SET_LOGGING_EVENT = "setLogging";
     String INCOMING_MESSAGE_EVENT = "incomingMessage";
-    String LIST_ORGS_EVENT = "listOrgs";
-
-
-
+    String LIST_TENANTS_EVENT = "listTenants";
 }

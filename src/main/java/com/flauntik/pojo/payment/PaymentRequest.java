@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class PaymentRequest {
-    private String orgId;
+    private String tenantId;
     private String userId;
     private String amount;
     private String currency;

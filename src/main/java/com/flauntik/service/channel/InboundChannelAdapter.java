@@ -5,7 +5,7 @@ import io.vertx.ext.web.RoutingContext;
 
 /**
  * Parses a provider-specific raw webhook request into the same canonical shape
- * {@code IncomingMessageRequest} already expects ({@code orgId}, {@code from},
+ * {@code IncomingMessageRequest} already expects ({@code tenantId}, {@code from},
  * {@code text.body}), so everything downstream of the HTTP layer stays provider-agnostic.
  */
 public interface InboundChannelAdapter {

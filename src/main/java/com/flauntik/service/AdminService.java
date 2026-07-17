@@ -2,7 +2,7 @@ package com.flauntik.service;
 
 import com.flauntik.dto.request.LoggingRequest;
 import com.flauntik.dto.response.Response;
-import com.flauntik.service.flow.OrgFlowRegistry;
+import com.flauntik.service.flow.TenantFlowRegistry;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.vertx.core.json.JsonObject;
@@ -19,11 +19,11 @@ import java.util.Map;
 @Log4j2
 public class AdminService {
 
-    private final OrgFlowRegistry orgFlowRegistry;
+    private final TenantFlowRegistry tenantFlowRegistry;
 
     @Inject
-    public AdminService(OrgFlowRegistry orgFlowRegistry) {
-        this.orgFlowRegistry = orgFlowRegistry;
+    public AdminService(TenantFlowRegistry tenantFlowRegistry) {
+        this.tenantFlowRegistry = tenantFlowRegistry;
     }
 
     //https://stackoverflow.com/a/65151249
@@ -39,11 +39,11 @@ public class AdminService {
         return Response.getSuccessResponse();
     }
 
-    public Map<String, Object> listOrgs() {
-        Map<String, Object> orgs = new LinkedHashMap<>();
-        for (String orgId : orgFlowRegistry.getOrgIds()) {
-            orgs.put(orgId, Map.of("stepCount", orgFlowRegistry.getStepCount(orgId), "validated", true));
+    public Map<String, Object> listTenants() {
+        Map<String, Object> tenants = new LinkedHashMap<>();
+        for (String tenantId : tenantFlowRegistry.getTenantIds()) {
+            tenants.put(tenantId, Map.of("stepCount", tenantFlowRegistry.getStepCount(tenantId), "validated", true));
         }
-        return orgs;
+        return tenants;
     }
 }

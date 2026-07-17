@@ -5,8 +5,8 @@ import io.vertx.ext.web.RoutingContext;
 
 /**
  * Parses Twilio's WhatsApp webhook (form-urlencoded {@code From}/{@code Body} fields).
- * The org is already known from the {@code :orgId} path segment - Twilio lets each
- * WhatsApp number's webhook URL be configured per-org in the Twilio console, unlike
+ * The tenant is already known from the {@code :tenantId} path segment - Twilio lets each
+ * WhatsApp number's webhook URL be configured per-tenant in the Twilio console, unlike
  * Meta's single app-level webhook.
  */
 public class TwilioInboundAdapter implements InboundChannelAdapter {
@@ -15,7 +15,7 @@ public class TwilioInboundAdapter implements InboundChannelAdapter {
 
     @Override
     public JsonObject parseToCanonical(RoutingContext ctx) {
-        String orgId = ctx.pathParam("orgId");
+        String tenantId = ctx.pathParam("tenantId");
         String from = ctx.request().getFormAttribute("From");
         String body = ctx.request().getFormAttribute("Body");
         if (from == null || body == null) {
@@ -23,7 +23,7 @@ public class TwilioInboundAdapter implements InboundChannelAdapter {
         }
 
         return new JsonObject()
-                .put("orgId", orgId)
+                .put("tenantId", tenantId)
                 .put("from", stripWhatsAppPrefix(from))
                 .put("text", new JsonObject().put("body", body));
     }

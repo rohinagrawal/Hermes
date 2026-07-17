@@ -19,14 +19,14 @@ public class MessageHandler {
     }
 
     public JsonObject handleIncomingMessage(IncomingMessageRequest request) {
-        String orgId = request.getOrgId();
+        String tenantId = request.getTenantId();
         String userId = request.getFrom();
         String message = request.getText().getBody();
 
-        FlowStepResult result = flowManager.getNextStep(orgId, userId, message)
+        FlowStepResult result = flowManager.getNextStep(tenantId, userId, message)
                 .toCompletionStage().toCompletableFuture().join();
 
-        dispatchToWhatsApp(orgId, userId, result);
+        dispatchToWhatsApp(tenantId, userId, result);
 
         JsonObject response = new JsonObject().put("message", result.getMessage());
         if (result.hasMedia()) {
@@ -42,13 +42,13 @@ public class MessageHandler {
      * Fire-and-forget: the webhook ack (the returned JsonObject) must not block on
      * whether the outbound Twilio call itself succeeds.
      */
-    private void dispatchToWhatsApp(String orgId, String userId, FlowStepResult result) {
+    private void dispatchToWhatsApp(String tenantId, String userId, FlowStepResult result) {
         var send = result.hasContentTemplate()
-                ? whatsAppService.sendTemplateMessage(orgId, userId, result.getContentSid(), result.getContentVariables())
+                ? whatsAppService.sendTemplateMessage(tenantId, userId, result.getContentSid(), result.getContentVariables())
                 : result.hasMedia()
-                ? whatsAppService.sendMediaMessage(orgId, userId, result.getMediaUrl(), result.getMediaCaption())
-                : whatsAppService.sendMessage(orgId, userId, result.getMessage());
+                ? whatsAppService.sendMediaMessage(tenantId, userId, result.getMediaUrl(), result.getMediaCaption())
+                : whatsAppService.sendMessage(tenantId, userId, result.getMessage());
 
-        send.onFailure(err -> log.warn("WhatsApp send failed for org={} user={}: {}", orgId, userId, err.getMessage()));
+        send.onFailure(err -> log.warn("WhatsApp send failed for tenant={} user={}: {}", tenantId, userId, err.getMessage()));
     }
 }

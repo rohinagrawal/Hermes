@@ -23,8 +23,8 @@ public class MockPaymentProvider implements PaymentProvider {
         String url = "https://pay.mock.local/" + referenceId
                 + "?amount=" + request.getAmount()
                 + "&currency=" + request.getCurrency();
-        log.warn("Using MockPaymentProvider - not a real payment link. org={} user={} amount={} {}",
-                request.getOrgId(), request.getUserId(), request.getAmount(), request.getCurrency());
+        log.warn("Using MockPaymentProvider - not a real payment link. tenant={} user={} amount={} {}",
+                request.getTenantId(), request.getUserId(), request.getAmount(), request.getCurrency());
         return Future.succeededFuture(new PaymentLink(referenceId, url));
     }
 }

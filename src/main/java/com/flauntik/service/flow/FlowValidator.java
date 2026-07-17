@@ -23,24 +23,24 @@ public class FlowValidator {
     }
 
     /**
-     * Validates one org's flow graph, collecting every error found rather than
+     * Validates one tenant's flow graph, collecting every error found rather than
      * failing on the first, so a bad flow.json is one loud startup report instead
      * of a runtime NPE for whichever user happens to hit the broken step.
      */
-    public List<String> validate(String orgId, Map<String, FlowStep> flow) {
+    public List<String> validate(String tenantId, Map<String, FlowStep> flow) {
         List<String> errors = new ArrayList<>();
         if (flow == null || flow.isEmpty()) {
-            errors.add("[" + orgId + "] flow is empty");
+            errors.add("[" + tenantId + "] flow is empty");
             return errors;
         }
         if (!flow.containsKey("start")) {
-            errors.add("[" + orgId + "] missing required 'start' step");
+            errors.add("[" + tenantId + "] missing required 'start' step");
         }
 
         for (Map.Entry<String, FlowStep> entry : flow.entrySet()) {
             String stepId = entry.getKey();
             FlowStep step = entry.getValue();
-            String prefix = "[" + orgId + "." + stepId + "] ";
+            String prefix = "[" + tenantId + "." + stepId + "] ";
 
             if (step.getType() == null) {
                 errors.add(prefix + "missing or unrecognized 'type'");

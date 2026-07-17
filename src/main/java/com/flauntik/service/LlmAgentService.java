@@ -6,7 +6,7 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.flauntik.config.HermesConfig;
 import com.flauntik.config.LlmConfig;
-import com.flauntik.config.OrgConfig;
+import com.flauntik.config.TenantConfig;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.vertx.core.Future;
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 /**
  * LLM fallback agent: when a user's message doesn't match the current workflow menu,
  * this generates a helpful, on-brand reply via Claude instead of a canned "invalid
- * input" error. Enabled per-org (OrgConfig.llm.enabled) and only when the process has
+ * input" error. Enabled per-tenant (TenantConfig.llm.enabled) and only when the process has
  * an ANTHROPIC_API_KEY — otherwise it reports unavailable and FlowManager falls back to
  * the default re-prompt, so the bot still works without any LLM configured.
  */
@@ -54,12 +54,12 @@ public class LlmAgentService {
         }
     }
 
-    /** True only when the client is ready AND this org opted into the LLM fallback. */
-    public boolean isAvailableFor(String orgId) {
+    /** True only when the client is ready AND this tenant opted into the LLM fallback. */
+    public boolean isAvailableFor(String tenantId) {
         if (client == null) {
             return false;
         }
-        LlmConfig llm = hermesConfig.getOrgConfig(orgId).getLlm();
+        LlmConfig llm = hermesConfig.getTenantConfig(tenantId).getLlm();
         return llm != null && llm.isEnabled();
     }
 
@@ -68,8 +68,8 @@ public class LlmAgentService {
      * user is looking at, passed to the model so it can answer and then steer the user
      * back to a valid option. Runs the (blocking) SDK call on Vert.x's worker pool.
      */
-    public Future<String> generateReply(String orgId, String userMessage, String menuText) {
-        LlmConfig cfg = hermesConfig.getOrgConfig(orgId).getLlm();
+    public Future<String> generateReply(String tenantId, String userMessage, String menuText) {
+        LlmConfig cfg = hermesConfig.getTenantConfig(tenantId).getLlm();
         String system = buildSystemPrompt(cfg, menuText);
 
         return vertx.executeBlocking((Promise<String> promise) -> {
