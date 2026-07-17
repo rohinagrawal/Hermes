@@ -1,12 +1,11 @@
 package com.flauntik.util;
 
+import org.apache.commons.text.StringSubstitutor;
+import org.apache.commons.text.lookup.StringLookup;
+
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class TemplateUtil {
-
-    private static final Pattern TOKEN_PATTERN = Pattern.compile("\\{\\{\\s*([\\w.]+)\\s*}}");
 
     private TemplateUtil() {
     }
@@ -22,14 +21,18 @@ public class TemplateUtil {
         if (context == null || context.isEmpty()) {
             return template;
         }
-        Matcher matcher = TOKEN_PATTERN.matcher(template);
-        StringBuilder result = new StringBuilder();
-        while (matcher.find()) {
-            Object value = context.get(matcher.group(1));
-            matcher.appendReplacement(result, value == null ? matcher.group(0) : Matcher.quoteReplacement(String.valueOf(value)));
-        }
-        matcher.appendTail(result);
-        return result.toString();
+
+        StringLookup lookup = key -> {
+            Object value = context.get(key.trim());
+            return value == null ? null : String.valueOf(value);
+        };
+
+        StringSubstitutor substitutor = new StringSubstitutor(lookup, "{{", "}}", '$');
+        // Guarantees a single pass: without this, a resolved value that itself contains
+        // "{{...}}"-looking text (e.g. a user's free-text answer) would get re-scanned and
+        // substituted again, which the original hand-rolled regex never did.
+        substitutor.setDisableSubstitutionInValues(true);
+        return substitutor.replace(template);
     }
 
     public static Map<String, String> renderMap(Map<String, String> templates, Map<String, Object> context) {
