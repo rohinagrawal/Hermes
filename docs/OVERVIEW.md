@@ -8,13 +8,13 @@ are linked at the bottom.
 
 ## What Hermes is
 
-Hermes is a WhatsApp chatbot backend where **each organization ("org") defines its own
+Hermes is a WhatsApp chatbot backend where **each tenant ("tenant") defines its own
 conversation as a JSON file** — menus, questions, external API calls, in-process logic,
 payments, media, and conditional routing. Anything a user types that *isn't* part of the
 scripted flow is answered by an **LLM agent**. WhatsApp connectivity (both receiving and
-sending) is **pluggable per org** — Twilio or Meta's WhatsApp Cloud API today.
+sending) is **pluggable per tenant** — Twilio or Meta's WhatsApp Cloud API today.
 
-The point: onboarding an org and changing its conversation is **configuration, not code**.
+The point: onboarding a tenant and changing its conversation is **configuration, not code**.
 
 ---
 
@@ -25,25 +25,25 @@ flowchart TD
     U([WhatsApp user]) -->|sends a message| P{{Twilio  or  Meta Cloud API}}
 
     subgraph IN["Inbound - provider-specific"]
-      P --> R1["/hermes/:orgId/webhook<br/>(Twilio)"]
+      P --> R1["/hermes/:tenantId/webhook<br/>(Twilio)"]
       P --> R2["/hermes/webhook/whatsapp<br/>(Meta, shared + signature check)"]
       R1 --> ADP["Inbound adapter<br/>parse to canonical shape"]
       R2 --> ADP
     end
 
-    ADP -->|canonical: orgId, from, text| BUS["Vert.x event bus"]
+    ADP -->|canonical: tenantId, from, text| BUS["Vert.x event bus"]
 
     subgraph CORE["Shared - provider-agnostic"]
       BUS --> MH["MessageHandler"]
       MH --> FM["FlowManager.getNextStep"]
       FM <--> SS["SessionStore<br/>(5-min TTL + LRU)"]
-      FM --> FLOW["org's flow.json<br/>run/advance a step"]
+      FM --> FLOW["tenant's flow.json<br/>run/advance a step"]
       FLOW -->|off-menu message| LLM["LLM agent<br/>(Claude)"]
       LLM --> FLOW
       FLOW --> RES["reply: text / media / template"]
     end
 
-    RES --> WS["WhatsAppService<br/>pick sender by org.provider"]
+    RES --> WS["WhatsAppService<br/>pick sender by tenant.provider"]
 
     subgraph OUT["Outbound - provider-specific"]
       WS --> S1["Twilio sender"]
@@ -65,23 +65,23 @@ engine never changes.
 ## The journey of a message
 
 1. **A message arrives.** Twilio and Meta each POST to a different webhook; a shared Meta
-   endpoint also verifies a signature and figures out which org the number belongs to. An
+   endpoint also verifies a signature and figures out which tenant the number belongs to. An
    **inbound adapter** turns the provider's payload into one canonical shape:
-   `{ orgId, from, text }`. (There's also a plain JSON test route for local development.)
+   `{ tenantId, from, text }`. (There's also a plain JSON test route for local development.)
 
 2. **It crosses the event bus** to `MessageHandler`, which asks `FlowManager` for the next
-   step: `getNextStep(orgId, userId, text)`.
+   step: `getNextStep(tenantId, userId, text)`.
 
-3. **FlowManager loads that org's flow** and the user's **session** (where they are + what
+3. **FlowManager loads that tenant's flow** and the user's **session** (where they are + what
    they've answered so far). A brand-new or expired user starts at the flow's `start` step.
 
 4. **It runs/advances a step.** Interactive steps (a message, a menu, media) render a reply
    and **pause** for the user's next message. Automatic steps (call an API, take a payment,
    run in-process logic, branch) execute immediately and **cascade** to the next step.
    - If the user was at a menu and typed something that isn't a valid option, the **LLM
-     agent** answers their question (if the org enabled it) and re-shows the menu.
+     agent** answers their question (if the tenant enabled it) and re-shows the menu.
 
-5. **The reply goes back out.** `WhatsAppService` looks at the org's configured provider and
+5. **The reply goes back out.** `WhatsAppService` looks at the tenant's configured provider and
    hands the reply to the matching sender (Twilio or Meta), which delivers it on WhatsApp.
 
 Everything the user answers is remembered in their **session** so later steps can use it
@@ -91,8 +91,8 @@ Everything the user answers is remembered in their **session** so later steps ca
 
 ## The building blocks
 
-### Orgs
-A tenant. Each org has an id (e.g. `clinic`), a `flow.json`, a provider + credentials, and
+### Tenants
+A tenant. Each tenant has an id (e.g. `clinic`), a `flow.json`, a provider + credentials, and
 optionally its own LLM persona. Adding one is 5 steps — see
 [flow-authoring.md](../.agents/rules/flow-authoring.md).
 
@@ -120,14 +120,14 @@ idle TTL** (resets on every message) and an **LRU cap** (bounded memory). Idle p
 version is the path to multi-instance durability).
 
 ### Channels (providers)
-Inbound and outbound are pluggable per org via `OrgConfig.provider`
+Inbound and outbound are pluggable per tenant via `TenantConfig.provider`
 (`TWILIO` | `WHATSAPP_CLOUD_API`). The Meta path implements the real Cloud API webhook
-(GET verification handshake + `X-Hub-Signature-256` validation, org resolved by
+(GET verification handshake + `X-Hub-Signature-256` validation, tenant resolved by
 `phone_number_id`). Details: [hermes-architecture.md](../.agents/rules/hermes-architecture.md).
 
 ### LLM fallback
-When a user sends something off-script at a menu, an org with `llm.enabled` gets a Claude
-reply instead of a canned "invalid input". Per-org model + persona; the API key comes from
+When a user sends something off-script at a menu, a tenant with `llm.enabled` gets a Claude
+reply instead of a canned "invalid input". Per-tenant model + persona; the API key comes from
 the `ANTHROPIC_API_KEY` environment variable (never config). No key → it silently falls
 back to the re-prompt, so the bot always works.
 
@@ -165,6 +165,7 @@ fallback — all defined in JSON.
 |---|---|
 | **Understand the system** (you're here) | this doc |
 | **Run it and message it from a real phone** | [GO_LIVE.md](../GO_LIVE.md) |
-| **Add a new org / write or edit a flow** | [flow-authoring.md](../.agents/rules/flow-authoring.md) |
-| **Understand the code internals** | [hermes-architecture.md](../.agents/rules/hermes-architecture.md) |
+| **Add a new tenant / write or edit a flow** | [flow-authoring.md](../.agents/rules/flow-authoring.md) |
+| **Go deep on the code — every class, every diagram** | [LLD.md](LLD.md) |
+| **Understand the code internals (narrative)** | [hermes-architecture.md](../.agents/rules/hermes-architecture.md) |
 | **Build & run commands** | [maven-build.md](../.agents/rules/maven-build.md) |

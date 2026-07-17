@@ -1,34 +1,34 @@
 ---
-description: How to onboard a new org and author its flow.json (all step types, branching, templating, validation)
+description: How to onboard a new tenant and author its flow.json (all step types, branching, templating, validation)
 alwaysApply: false
 ---
 
-# Onboarding an org & authoring flows
+# Onboarding a tenant & authoring flows
 
-Read this when adding a new organization to Hermes or writing/editing a `flow.json`.
+Read this when adding a new tenant to Hermes or writing/editing a `flow.json`.
 For the runtime architecture see [hermes-architecture.md](hermes-architecture.md); for
 build/run see [maven-build.md](maven-build.md); for connecting a real WhatsApp number see
 [GO_LIVE.md](../../GO_LIVE.md).
 
-Everything below is **data-driven** — onboarding an org and defining its conversation is
+Everything below is **data-driven** — onboarding a tenant and defining its conversation is
 config + JSON, no code changes.
 
 ---
 
-## Part 1 — Onboard a new org (5 steps)
+## Part 1 — Onboard a new tenant (5 steps)
 
-Say the new org is `acme`.
+Say the new tenant is `acme`.
 
 1. **Create the flow file** at `src/main/resources/flows/acme/flow.json` (see Part 2).
 
-2. **Register the org id** in `src/main/resources/flows/orgs-registry.json`:
+2. **Register the tenant id** in `src/main/resources/flows/tenants-registry.json`:
    ```json
    ["demo", "demo_direct", "clinic", "acme"]
    ```
-   `OrgFlowRegistry` loads `flows/{orgId}/flow.json` for each id here at startup, from the
+   `TenantFlowRegistry` loads `flows/{tenantId}/flow.json` for each id here at startup, from the
    classpath (works in the IDE and the packaged fat jar).
 
-3. **Add the org to `config.json`** under `orgs`. Pick a provider and give it credentials
+3. **Add the tenant to `config.json`** under `tenants`. Pick a provider and give it credentials
    (use clearly-marked placeholders until you have real ones — never commit real secrets):
 
    ```json
@@ -43,7 +43,7 @@ Say the new org is `acme`.
    `"cloudApiAccessToken": "..."`. `provider` defaults to `TWILIO` if omitted.
 
 4. **(Optional) Enable the LLM fallback** so off-menu messages get an AI reply instead of
-   a canned re-prompt. Add an `llm` block to the org and set `ANTHROPIC_API_KEY` in the
+   a canned re-prompt. Add an `llm` block to the tenant and set `ANTHROPIC_API_KEY` in the
    environment (the key is **never** put in `config.json`):
    ```json
    "llm": {
@@ -56,9 +56,9 @@ Say the new org is `acme`.
 
 5. **Build, run, verify.** `mvn -q -DskipTests package` then run the fat jar (see
    maven-build.md). At startup you should see
-   `Loaded and validated N org flow(s): [..., acme]`. Confirm with:
+   `Loaded and validated N tenant flow(s): [..., acme]`. Confirm with:
    ```bash
-   curl -s localhost:8080/hermes/admin/orgs        # lists each org, step count, validated:true
+   curl -s localhost:8080/hermes/admin/tenants        # lists each tenant, step count, validated:true
    ```
    Drive it without a real number via the JSON test route:
    ```bash
@@ -69,7 +69,7 @@ Say the new org is `acme`.
    [GO_LIVE.md](../../GO_LIVE.md).
 
 > A broken flow **fails startup loudly** with an aggregated error report (every problem at
-> once), not a runtime NPE. If the app won't boot after adding an org, read the
+> once), not a runtime NPE. If the app won't boot after adding a tenant, read the
 > `Refusing to start: found N flow configuration error(s)` block — it names the exact
 > step and problem.
 
