@@ -1,8 +1,10 @@
 package com.flauntik.service.channel;
 
 import com.flauntik.config.HermesConfig;
-import com.flauntik.config.OrgConfig;
+import com.flauntik.config.TenantConfig;
 import com.google.inject.Inject;
+import io.vertx.circuitbreaker.CircuitBreaker;
+import io.vertx.circuitbreaker.CircuitBreakerOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -14,7 +16,7 @@ import java.util.Map;
 
 /**
  * Sends outbound WhatsApp messages via Meta's WhatsApp Cloud API (Graph API), using
- * each org's {@code cloudApiPhoneNumberId}/{@code cloudApiAccessToken}.
+ * each tenant's {@code cloudApiPhoneNumberId}/{@code cloudApiAccessToken}.
  *
  * NOTE: not validated against a live Meta sandbox (no real WhatsApp Business Account
  * available at implementation time) - the request shapes follow Meta's documented API,
@@ -31,33 +33,38 @@ public class WhatsAppCloudApiMessageSender implements OutboundMessageSender {
 
     private final WebClient webClient;
     private final HermesConfig hermesConfig;
+    // One breaker for the whole class: every tenant's Cloud API calls hit the same
+    // graph.facebook.com host, so a shared breaker correctly reflects "is Meta up right now".
+    private final CircuitBreaker breaker;
 
     @Inject
     public WhatsAppCloudApiMessageSender(Vertx vertx, HermesConfig hermesConfig) {
         this.webClient = WebClient.create(vertx);
         this.hermesConfig = hermesConfig;
+        this.breaker = CircuitBreaker.create("whatsapp-cloud-api-send", vertx,
+                new CircuitBreakerOptions().setMaxFailures(5).setTimeout(10_000).setResetTimeout(30_000).setFailuresRollingWindow(60_000));
     }
 
     @Override
-    public Future<JsonObject> sendMessage(String orgId, String to, String message) {
+    public Future<JsonObject> sendMessage(String tenantId, String to, String message) {
         JsonObject body = baseMessage(to, "text")
                 .put("text", new JsonObject().put("body", message));
-        return send(orgId, to, body);
+        return send(tenantId, to, body);
     }
 
     @Override
-    public Future<JsonObject> sendMediaMessage(String orgId, String to, String mediaUrl, String caption) {
+    public Future<JsonObject> sendMediaMessage(String tenantId, String to, String mediaUrl, String caption) {
         // FlowStep.mediaType is one of image/video/audio/document, matching Meta's message type field.
         JsonObject mediaObject = new JsonObject().put("link", mediaUrl);
         if (caption != null && !caption.isBlank()) {
             mediaObject.put("caption", caption);
         }
         JsonObject body = baseMessage(to, "image").put("image", mediaObject);
-        return send(orgId, to, body);
+        return send(tenantId, to, body);
     }
 
     @Override
-    public Future<JsonObject> sendTemplateMessage(String orgId, String to, String templateName, Map<String, String> templateVariables) {
+    public Future<JsonObject> sendTemplateMessage(String tenantId, String to, String templateName, Map<String, String> templateVariables) {
         JsonObject template = new JsonObject()
                 .put("name", templateName)
                 .put("language", new JsonObject().put("code", "en_US"));
@@ -69,7 +76,7 @@ public class WhatsAppCloudApiMessageSender implements OutboundMessageSender {
         }
 
         JsonObject body = baseMessage(to, "template").put("template", template);
-        return send(orgId, to, body);
+        return send(tenantId, to, body);
     }
 
     private static JsonObject baseMessage(String to, String type) {
@@ -79,17 +86,20 @@ public class WhatsAppCloudApiMessageSender implements OutboundMessageSender {
                 .put("type", type);
     }
 
-    private Future<JsonObject> send(String orgId, String to, JsonObject body) {
-        OrgConfig orgConfig = hermesConfig.getOrgConfig(orgId);
-        String url = String.format(GRAPH_API_URL, orgConfig.getCloudApiPhoneNumberId());
+    private Future<JsonObject> send(String tenantId, String to, JsonObject body) {
+        TenantConfig tenantConfig = hermesConfig.getTenantConfig(tenantId);
+        String url = String.format(GRAPH_API_URL, tenantConfig.getCloudApiPhoneNumberId());
 
-        return webClient.postAbs(url)
-                .putHeader("Authorization", "Bearer " + orgConfig.getCloudApiAccessToken())
-                .putHeader("Content-Type", "application/json")
-                .sendJsonObject(body)
-                .map(response -> response.bodyAsJsonObject())
+        return breaker.<JsonObject>execute(promise -> {
+                    Future<JsonObject> callFuture = webClient.postAbs(url)
+                            .putHeader("Authorization", "Bearer " + tenantConfig.getCloudApiAccessToken())
+                            .putHeader("Content-Type", "application/json")
+                            .sendJsonObject(body)
+                            .map(response -> response.bodyAsJsonObject());
+                    callFuture.onComplete(promise);
+                })
                 .recover(err -> {
-                    log.error("Failed to send WhatsApp message via Cloud API for org={} to={}", orgId, to, err);
+                    log.error("Failed to send WhatsApp message via Cloud API for tenant={} to={}", tenantId, to, err);
                     return Future.failedFuture(err);
                 });
     }
