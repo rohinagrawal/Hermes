@@ -57,6 +57,11 @@ public class MainVerticle extends AbstractVerticle {
             deploymentManager.deployVerticle(APIVerticle.class, hermesConfig.getVerticleDeploymentOptions().get(APIVerticle.class.getSimpleName()),
                     asyncResult -> processVerticleDeployResult(startPromise, asyncResult, APIVerticle.class.getSimpleName()));
 
+            if (hermesConfig.getKafka() != null) {
+                deploymentManager.deployVerticle(KafkaIngestionVerticle.class,
+                        asyncResult -> processVerticleDeployResult(startPromise, asyncResult, KafkaIngestionVerticle.class.getSimpleName()));
+            }
+
         } catch (Throwable e) {
             log.error(UNABLE_START_SERVER, e);
             startPromise.fail(e);

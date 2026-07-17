@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.flauntik.enums.FlowStepType;
 import com.flauntik.jackson.deserializer.NextFieldDeserializer;
 import lombok.Data;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -13,8 +14,35 @@ public class FlowStep {
     private FlowStepType type;
     private String message;
     private Map<String, String> options;
-    private String action;
 
     @JsonDeserialize(using = NextFieldDeserializer.class)
     private Object next;
+
+    // API_CALL fields
+    private String apiUrl;
+    private String apiMethod;
+    private Map<String, String> apiHeaders;
+    private Map<String, Object> apiBody;
+    private Map<String, String> responseMapping;
+
+    // PAYMENT fields
+    private String paymentAmount;
+    private String paymentCurrency;
+    private String paymentDescription;
+
+    // MEDIA fields
+    private String mediaType;
+    private String mediaUrl;
+    private String mediaCaption;
+
+    // BRANCH fields — conditional routing on earlier answers; `next` is the default target
+    private List<Branch> branches;
+
+    // ACTION fields — invoke a named in-process StepActionHandler; success/failure branch via `next`
+    private String action;
+    private Map<String, String> actionParams;
+
+    // Optional pre-registered Twilio Content Template, usable on any step type
+    private String contentSid;
+    private Map<String, String> contentVariables;
 }

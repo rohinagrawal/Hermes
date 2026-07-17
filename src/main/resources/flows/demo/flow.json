@@ -1,0 +1,96 @@
+{
+  "start": {
+    "type": "list",
+    "message": "Welcome! Select an option:",
+    "options": {
+      "1": "Order Status",
+      "2": "Support",
+      "3": "Feedback",
+      "4": "Make Payment"
+    },
+    "next": {
+      "1": "order_status",
+      "2": "support",
+      "3": "feedback",
+      "4": "make_payment"
+    }
+  },
+  "order_status": {
+    "type": "message",
+    "message": "Enter your Order ID:",
+    "next": "fetch_order_status"
+  },
+  "fetch_order_status": {
+    "type": "api_call",
+    "apiMethod": "GET",
+    "apiUrl": "https://httpbin.org/get?orderId={{order_status}}",
+    "responseMapping": {
+      "orderId": "/args/orderId"
+    },
+    "next": {
+      "success": "order_status_result",
+      "failure": "order_status_failed"
+    }
+  },
+  "order_status_result": {
+    "type": "message",
+    "message": "Your order {{orderId}} is on its way!",
+    "next": "start"
+  },
+  "order_status_failed": {
+    "type": "message",
+    "message": "Sorry, we couldn't fetch that order right now. Please try again later.",
+    "next": "start"
+  },
+  "support": {
+    "type": "media",
+    "mediaType": "image",
+    "mediaUrl": "https://example.com/support-banner.png",
+    "mediaCaption": "Our support team is here to help!",
+    "next": "support_message"
+  },
+  "support_message": {
+    "type": "message",
+    "message": "Please describe your issue and our team will reach out.",
+    "next": "start"
+  },
+  "feedback": {
+    "type": "button",
+    "message": "Please rate your experience:",
+    "options": {
+      "1": "Good",
+      "2": "Average",
+      "3": "Bad"
+    },
+    "next": {
+      "1": "thank_you",
+      "2": "thank_you",
+      "3": "thank_you"
+    }
+  },
+  "thank_you": {
+    "type": "message",
+    "message": "Thank you for your feedback!",
+    "next": "start"
+  },
+  "make_payment": {
+    "type": "payment",
+    "paymentAmount": "499",
+    "paymentCurrency": "INR",
+    "paymentDescription": "Hermes Pro subscription",
+    "next": {
+      "success": "payment_success",
+      "failure": "payment_failure"
+    }
+  },
+  "payment_success": {
+    "type": "message",
+    "message": "Tap to complete your payment: {{paymentLink}}",
+    "next": "start"
+  },
+  "payment_failure": {
+    "type": "message",
+    "message": "Sorry, we couldn't generate a payment link right now. Please try again later.",
+    "next": "start"
+  }
+}

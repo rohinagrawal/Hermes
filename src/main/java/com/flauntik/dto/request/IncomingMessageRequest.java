@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IncomingMessageRequest {
+    private String tenantId;
     private String from;
     private IncomingMessageText text;
 }

@@ -33,10 +33,17 @@ java -Dvertx.logger-delegate-factory-class-name=io.vertx.core.logging.Log4j2LogD
      run com.flauntik.verticle.MainVerticle -conf config.json --debug
 ```
 
-`config.json` at the repo root supplies `HermesConfig` (port, profile, per-verticle deployment options). The process must be launched with the repo root as its working directory — `FlowManager` currently reads `src/main/resources/flow.json` by relative path rather than from the classpath.
+`config.json` at the repo root supplies `HermesConfig` (port, profile, per-verticle deployment options, per-org Twilio creds under `orgs`). Org flow definitions are loaded from the classpath (`flows/orgs-registry.json` + `flows/{orgId}/flow.json` under `src/main/resources/`), so they work the same whether run from the IDE or the packaged fat jar.
 
 ## Validation Notes
 
+- If `mvn compile` fails with "cannot find symbol" for methods/fields that are clearly
+  Lombok-generated (`getX`/`setX`/`log` from `@Data`/`@Log4j2`), this is not a code bug —
+  it means `JAVA_HOME` is unset or points at a JDK newer than Lombok supports (this repo
+  targets `release: 21` in `pom.xml`; running Maven under a much newer JDK breaks Lombok
+  annotation processing silently, with no error naming Lombok at all). Fix:
+  `export JAVA_HOME=$(/usr/libexec/java_home -v 21)` (or point directly at an installed
+  Corretto/Temurin 21 home) before invoking `mvn`.
 - Do not assume a `src/test` tree exists; check before referencing test commands.
 - If you add tests, wire them into `mvn test` and update this rule and `.agents/manifest.json` in the same change.
 - If you change the build layout (source roots, shading config, launcher class), update `pom.xml`, `.run/Hermes-Run.run.xml`, and this rule together.

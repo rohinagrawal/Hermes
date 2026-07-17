@@ -1,66 +1,47 @@
 package com.flauntik.service;
 
+import com.flauntik.config.HermesConfig;
+import com.flauntik.enums.WhatsAppProviderType;
+import com.flauntik.service.channel.OutboundMessageSender;
 import com.google.inject.Inject;
 import io.vertx.core.Future;
-import io.vertx.core.MultiMap;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.WebClient;
 
+import java.util.Map;
+
+/**
+ * Dispatches outbound WhatsApp sends to the right provider-specific
+ * {@link OutboundMessageSender} for each tenant, based on {@code TenantConfig.provider}.
+ */
 public class WhatsAppService {
 
-    private final WebClient webClient;
-    private static final String TWILIO_API_URL = "https://api.twilio.com/2010-04-01/Accounts/{ACCOUNT_SID}/Messages.json";
-    private static final String ACCOUNT_SID = "your_twilio_account_sid";
-    private static final String AUTH_TOKEN = "your_twilio_auth_token";
-    private static final String FROM_WHATSAPP = "whatsapp:+your_twilio_number";
+    private final HermesConfig hermesConfig;
+    private final Map<WhatsAppProviderType, OutboundMessageSender> sendersByProvider;
 
     @Inject
-    public WhatsAppService() {
-        this.webClient = WebClient.create(io.vertx.core.Vertx.vertx());
+    public WhatsAppService(HermesConfig hermesConfig, Map<WhatsAppProviderType, OutboundMessageSender> sendersByProvider) {
+        this.hermesConfig = hermesConfig;
+        this.sendersByProvider = sendersByProvider;
     }
 
-    private static MultiMap jsonToMultiMap(JsonObject jsonObject) {
-        MultiMap form = MultiMap.caseInsensitiveMultiMap();
-        jsonObject.forEach(entry -> form.add(entry.getKey(), entry.getValue().toString()));
-        return form;
+    public Future<JsonObject> sendMessage(String tenantId, String to, String message) {
+        return senderFor(tenantId).sendMessage(tenantId, to, message);
     }
 
-    public Future<JsonObject> sendMessage(String to, String message) {
-        JsonObject requestBody = new JsonObject()
-                .put("To", "whatsapp:" + to)
-                .put("From", FROM_WHATSAPP)
-                .put("Body", message);
-
-        return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
-                .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
-                .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendForm(jsonToMultiMap(requestBody))
-                .map(response -> response.bodyAsJsonObject());
+    public Future<JsonObject> sendMediaMessage(String tenantId, String to, String mediaUrl, String caption) {
+        return senderFor(tenantId).sendMediaMessage(tenantId, to, mediaUrl, caption);
     }
 
-    public Future<JsonObject> sendListMessage(String to, JsonObject listMessage) {
-        JsonObject requestBody = new JsonObject()
-                .put("To", "whatsapp:" + to)
-                .put("From", FROM_WHATSAPP)
-                .put("Body", listMessage.encode());
-
-        return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
-                .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
-                .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendForm(jsonToMultiMap(requestBody))
-                .map(response -> response.bodyAsJsonObject());
+    public Future<JsonObject> sendTemplateMessage(String tenantId, String to, String contentSid, Map<String, String> contentVariables) {
+        return senderFor(tenantId).sendTemplateMessage(tenantId, to, contentSid, contentVariables);
     }
 
-    public Future<JsonObject> sendReplyButtonMessage(String to, JsonObject replyButtonMessage) {
-        JsonObject requestBody = new JsonObject()
-                .put("To", "whatsapp:" + to)
-                .put("From", FROM_WHATSAPP)
-                .put("Body", replyButtonMessage.encode());
-
-        return webClient.postAbs(TWILIO_API_URL.replace("{ACCOUNT_SID}", ACCOUNT_SID))
-                .putHeader("Authorization", "Basic " + java.util.Base64.getEncoder().encodeToString((ACCOUNT_SID + ":" + AUTH_TOKEN).getBytes()))
-                .putHeader("Content-Type", "application/x-www-form-urlencoded")
-                .sendForm(jsonToMultiMap(requestBody))
-                .map(response -> response.bodyAsJsonObject());
+    private OutboundMessageSender senderFor(String tenantId) {
+        WhatsAppProviderType provider = hermesConfig.getTenantConfig(tenantId).getProvider();
+        OutboundMessageSender sender = sendersByProvider.get(provider);
+        if (sender == null) {
+            throw new IllegalStateException("No OutboundMessageSender bound for provider: " + provider);
+        }
+        return sender;
     }
 }

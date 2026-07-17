@@ -38,6 +38,7 @@ public class APIVerticle extends AbstractVerticle {
         this.vertx.eventBus().consumer(TEST, (Handler<Message<JsonObject>>) message -> handleMessage(TEST, message));
         this.vertx.eventBus().consumer(SET_LOGGING_EVENT, (Handler<Message<JsonObject>>) message -> handleMessage(SET_LOGGING_EVENT, message));
         this.vertx.eventBus().consumer(URIConstant.INCOMING_MESSAGE_EVENT, (Handler<Message<JsonObject>>) message -> handleMessage(INCOMING_MESSAGE_EVENT, message));
+        this.vertx.eventBus().consumer(URIConstant.LIST_TENANTS_EVENT, (Handler<Message<JsonObject>>) message -> handleMessage(LIST_TENANTS_EVENT, message));
         startPromise.complete();
     }
 
@@ -82,6 +83,9 @@ public class APIVerticle extends AbstractVerticle {
             }
             case INCOMING_MESSAGE_EVENT -> {
                 response = Response.getSuccessResponse(hermesService.handleIncomingMessage(messageJO));
+            }
+            case LIST_TENANTS_EVENT -> {
+                response = Response.getSuccessResponse(adminService.listTenants());
             }
             default ->
                     throw new ReplyException(ReplyFailure.NO_HANDLERS, HttpStatus.SC_NOT_FOUND, "No Handler Configured");

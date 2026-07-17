@@ -11,5 +11,34 @@
       "instances": 1,
       "workerPoolSize": 20
     }
+  },
+  "whatsAppCloudApiVerifyToken": "REPLACE_ME_CLOUD_API_VERIFY_TOKEN",
+  "whatsAppCloudApiAppSecret": "REPLACE_ME_CLOUD_API_APP_SECRET",
+  "sessionTtlMinutes": 5,
+  "sessionMaxSize": 10000,
+  "tenants": {
+    "demo": {
+      "provider": "TWILIO",
+      "twilioAccountSid": "REPLACE_ME_TWILIO_ACCOUNT_SID",
+      "twilioAuthToken": "REPLACE_ME_TWILIO_AUTH_TOKEN",
+      "twilioFromWhatsAppNumber": "whatsapp:+REPLACE_ME"
+    },
+    "demo_direct": {
+      "provider": "WHATSAPP_CLOUD_API",
+      "cloudApiPhoneNumberId": "REPLACE_ME_CLOUD_API_PHONE_NUMBER_ID",
+      "cloudApiAccessToken": "REPLACE_ME_CLOUD_API_ACCESS_TOKEN"
+    },
+    "clinic": {
+      "provider": "TWILIO",
+      "twilioAccountSid": "REPLACE_ME_TWILIO_ACCOUNT_SID",
+      "twilioAuthToken": "REPLACE_ME_TWILIO_AUTH_TOKEN",
+      "twilioFromWhatsAppNumber": "whatsapp:+REPLACE_ME",
+      "llm": {
+        "enabled": true,
+        "model": "claude-opus-4-8",
+        "maxTokens": 400,
+        "systemPrompt": "You are the friendly front-desk assistant for BrightCare Clinic, a general medical clinic at 12 MG Road, Bengaluru, open Mon-Sat 9 AM to 7 PM. Consultations cost Rs.500 and are booked through this WhatsApp chat. You can answer general questions about the clinic (location, hours, how booking works, what to expect) and reassure patients. You are NOT a doctor: never diagnose, prescribe, or give specific medical advice - for anything clinical, encourage the patient to book a consultation."
+      }
+    }
   }
 }
