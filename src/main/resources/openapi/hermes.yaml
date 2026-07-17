@@ -1,0 +1,94 @@
+openapi: 3.0.0
+info:
+  title: Hermes API
+  version: "1.0"
+paths:
+  /healthcheck:
+    get:
+      operationId: healthCheck
+      responses:
+        '200':
+          description: OK
+
+  /hermes/test:
+    get:
+      operationId: test
+      responses:
+        '200':
+          description: OK
+
+  /hermes/{tenantId}/incoming_message:
+    post:
+      operationId: incomingMessage
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, text]
+              properties:
+                from:
+                  type: string
+                text:
+                  type: object
+                  required: [body]
+                  properties:
+                    body:
+                      type: string
+      responses:
+        '200':
+          description: OK
+
+  /hermes/admin/set_logging:
+    post:
+      operationId: setLogging
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level]
+              properties:
+                level:
+                  type: string
+      responses:
+        '200':
+          description: OK
+
+  /hermes/admin/tenants:
+    get:
+      operationId: listTenants
+      responses:
+        '200':
+          description: OK
+
+  /hermes/webhook/whatsapp:
+    get:
+      operationId: whatsappCloudApiVerification
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hub.verify_token
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hub.challenge
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
