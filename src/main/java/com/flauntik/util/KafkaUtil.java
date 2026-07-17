@@ -28,7 +28,11 @@ public class KafkaUtil {
         if (StringUtils.isBlank(kafkaProducerConfig.getBootStrapServers())) {
             throw new IllegalArgumentException("Bootstrap server config should not be empty");
         } else {
-            producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Arrays.asList(kafkaProducerConfig.getBootStrapServers().split(",")));
+            // Must be the raw comma-separated String, not a List: vertx's KafkaProducer.create
+            // path (KafkaClientOptions.fromProperties) casts every Properties value to String,
+            // so a List value throws ClassCastException. Kafka accepts the comma-separated form
+            // for multiple brokers, and the consumer init below already uses the String directly.
+            producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProducerConfig.getBootStrapServers());
         }
 
         if (StringUtils.isNotBlank(kafkaProducerConfig.getKeySerializer())) {

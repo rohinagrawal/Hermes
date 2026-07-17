@@ -5,10 +5,11 @@ import com.flauntik.pojo.ConversationSession;
 import com.flauntik.pojo.FlowStep;
 import com.flauntik.pojo.FlowStepResult;
 import com.flauntik.pojo.payment.PaymentRequest;
+import com.flauntik.repository.SessionStore;
 import com.flauntik.service.action.StepActionHandler;
-import com.flauntik.service.flow.OrgFlowRegistry;
+import com.flauntik.service.flow.TenantFlowRegistry;
+import com.flauntik.service.kafka.FlowEventPublisher;
 import com.flauntik.service.payment.PaymentProvider;
-import com.flauntik.service.session.SessionStore;
 import com.flauntik.util.TemplateUtil;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -18,7 +19,7 @@ import lombok.extern.log4j.Log4j2;
 import java.util.Map;
 
 /**
- * Drives a per-org, per-user conversation through that org's flow graph.
+ * Drives a per-tenant, per-user conversation through that tenant's flow graph.
  *
  * MESSAGE/LIST/BUTTON/MEDIA are "interactive" steps: they're rendered and sent to the
  * user, then execution pauses at that step id until the user's next message arrives.
@@ -33,68 +34,87 @@ import java.util.Map;
 @Singleton
 public class FlowManager {
 
-    private final OrgFlowRegistry orgFlowRegistry;
+    private final TenantFlowRegistry tenantFlowRegistry;
     private final ApiCallService apiCallService;
     private final PaymentProvider paymentProvider;
     private final LlmAgentService llmAgentService;
     private final SessionStore sessionStore;
+    private final FlowEventPublisher flowEventPublisher;
     private final Map<String, StepActionHandler> actionHandlers;
 
     @Inject
-    public FlowManager(OrgFlowRegistry orgFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider,
-                       LlmAgentService llmAgentService, SessionStore sessionStore,
+    public FlowManager(TenantFlowRegistry tenantFlowRegistry, ApiCallService apiCallService, PaymentProvider paymentProvider,
+                       LlmAgentService llmAgentService, SessionStore sessionStore, FlowEventPublisher flowEventPublisher,
                        Map<String, StepActionHandler> actionHandlers) {
-        this.orgFlowRegistry = orgFlowRegistry;
+        this.tenantFlowRegistry = tenantFlowRegistry;
         this.apiCallService = apiCallService;
         this.paymentProvider = paymentProvider;
         this.llmAgentService = llmAgentService;
         this.sessionStore = sessionStore;
+        this.flowEventPublisher = flowEventPublisher;
         this.actionHandlers = actionHandlers;
     }
 
-    public Future<FlowStepResult> getNextStep(String orgId, String userId, String input) {
-        Map<String, FlowStep> flow = orgFlowRegistry.getFlow(orgId);
-        ConversationSession session = sessionStore.get(orgId, userId);
+    public Future<FlowStepResult> getNextStep(String tenantId, String userId, String input) {
+        Map<String, FlowStep> flow = tenantFlowRegistry.getFlow(tenantId);
+        ConversationSession session = sessionStore.get(tenantId, userId);
         Map<String, Object> context = session.getContext();
 
+        Future<FlowStepResult> result;
         String currentStateId = session.getCurrentStepId();
         if (currentStateId == null) {
             // Brand new (or expired/evicted) session: the user hasn't been shown anything
             // yet, so their first message is a trigger to render `start`, not an answer to it.
-            return cascade(orgId, userId, session, "start", flow, context);
-        }
-
-        FlowStep currentStep = flow.get(currentStateId);
-        if (currentStep == null) {
-            log.warn("org={} user={} was parked on undefined step '{}', resetting to start", orgId, userId, currentStateId);
-            session.setCurrentStepId(null);
-            return cascade(orgId, userId, session, "start", flow, context);
-        }
-
-        context.put(currentStateId, input);
-
-        return switch (currentStep.getType()) {
-            case LIST, BUTTON -> {
-                @SuppressWarnings("unchecked")
-                Map<String, String> nextMap = (Map<String, String>) currentStep.getNext();
-                String nextId = nextMap.get(input);
-                yield nextId == null
-                        ? handleUnmatchedInput(orgId, currentStep, input, context)
-                        : cascade(orgId, userId, session, nextId, flow, context);
-            }
-            case MESSAGE, MEDIA -> cascade(orgId, userId, session, (String) currentStep.getNext(), flow, context);
-            default -> {
-                log.warn("org={} user={} was parked on non-interactive step '{}', resetting to start", orgId, userId, currentStateId);
+            result = cascade(tenantId, userId, session, "start", flow, context);
+        } else {
+            FlowStep currentStep = flow.get(currentStateId);
+            if (currentStep == null) {
+                log.warn("tenant={} user={} was parked on undefined step '{}', resetting to start", tenantId, userId, currentStateId);
                 session.setCurrentStepId(null);
-                yield cascade(orgId, userId, session, "start", flow, context);
+                result = cascade(tenantId, userId, session, "start", flow, context);
+            } else {
+                context.put(currentStateId, input);
+
+                result = switch (currentStep.getType()) {
+                    case LIST, BUTTON -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> nextMap = (Map<String, String>) currentStep.getNext();
+                        String nextId = nextMap.get(input);
+                        yield nextId == null
+                                ? handleUnmatchedInput(tenantId, currentStep, input, context)
+                                : cascade(tenantId, userId, session, nextId, flow, context);
+                    }
+                    case MESSAGE, MEDIA -> cascade(tenantId, userId, session, (String) currentStep.getNext(), flow, context);
+                    default -> {
+                        log.warn("tenant={} user={} was parked on non-interactive step '{}', resetting to start", tenantId, userId, currentStateId);
+                        session.setCurrentStepId(null);
+                        yield cascade(tenantId, userId, session, "start", flow, context);
+                    }
+                };
             }
-        };
+        }
+
+        // Exactly one persist + one event publish per incoming message, regardless of how
+        // many automatic steps (API_CALL/PAYMENT/ACTION/BRANCH) cascaded internally to
+        // reach the final result. The persist is offloaded to a worker by the store (the
+        // event loop is never blocked); a persist failure is logged but must not break the
+        // user's reply, so it's recovered before publishing the flow-completion event.
+        return result.compose(stepResult ->
+                sessionStore.save(tenantId, userId, session)
+                        .recover(err -> {
+                            log.error("Failed to persist session for tenant={} user={}", tenantId, userId, err);
+                            return Future.succeededFuture();
+                        })
+                        .map(v -> {
+                            flowEventPublisher.publish(tenantId, userId, session.getCurrentStepId());
+                            return stepResult;
+                        }));
     }
 
-    private Future<FlowStepResult> cascade(String orgId, String userId, ConversationSession session, String stepId, Map<String, FlowStep> flow, Map<String, Object> context) {
+    private Future<FlowStepResult> cascade(String tenantId, String userId, ConversationSession session, String stepId, Map<String, FlowStep> flow, Map<String, Object> context) {
         FlowStep step = flow.get(stepId);
         if (step == null) {
-            log.warn("org={} flow references undefined step '{}', resetting to start", orgId, stepId);
+            log.warn("tenant={} flow references undefined step '{}', resetting to start", tenantId, stepId);
             stepId = "start";
             step = flow.get("start");
         }
@@ -109,11 +129,11 @@ public class FlowManager {
             case API_CALL -> apiCallService.execute(resolvedStep, context).compose(extracted -> {
                 context.putAll(extracted);
                 boolean success = Boolean.TRUE.equals(extracted.get(ApiCallService.CONTEXT_API_CALL_SUCCESS));
-                return cascade(orgId, userId, session, resolveBranchNext(resolvedStep, success), flow, context);
+                return cascade(tenantId, userId, session, resolveBranchNext(resolvedStep, success), flow, context);
             });
-            case PAYMENT -> executePayment(orgId, userId, session, resolvedStep, flow, context);
-            case ACTION -> executeAction(orgId, userId, session, resolvedStep, flow, context);
-            case BRANCH -> cascade(orgId, userId, session, resolveBranchStep(resolvedStep, context), flow, context);
+            case PAYMENT -> executePayment(tenantId, userId, session, resolvedStep, flow, context);
+            case ACTION -> executeAction(tenantId, userId, session, resolvedStep, flow, context);
+            case BRANCH -> cascade(tenantId, userId, session, resolveBranchStep(resolvedStep, context), flow, context);
             default -> Future.failedFuture(new IllegalStateException("Unsupported step type " + step.getType() + " for step " + resolvedStepId));
         };
     }
@@ -126,12 +146,12 @@ public class FlowManager {
      * step's `failure` branch. The handler name is checked at startup by FlowValidator, so
      * a missing handler here is a guarded should-never-happen.
      */
-    private Future<FlowStepResult> executeAction(String orgId, String userId, ConversationSession session, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {
+    private Future<FlowStepResult> executeAction(String tenantId, String userId, ConversationSession session, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {
         StepActionHandler handler = actionHandlers.get(step.getAction());
         if (handler == null) {
-            log.error("org={} flow references unregistered action '{}'", orgId, step.getAction());
+            log.error("tenant={} flow references unregistered action '{}'", tenantId, step.getAction());
             context.put(StepActionHandler.ACTION_ERROR, "unregistered action: " + step.getAction());
-            return cascade(orgId, userId, session, resolveBranchNext(step, false), flow, context);
+            return cascade(tenantId, userId, session, resolveBranchNext(step, false), flow, context);
         }
 
         Map<String, String> params = TemplateUtil.renderMap(step.getActionParams(), context);
@@ -141,12 +161,12 @@ public class FlowManager {
                         context.putAll(result);
                     }
                     boolean success = result == null || !Boolean.FALSE.equals(result.get(StepActionHandler.ACTION_SUCCESS));
-                    return cascade(orgId, userId, session, resolveBranchNext(step, success), flow, context);
+                    return cascade(tenantId, userId, session, resolveBranchNext(step, success), flow, context);
                 })
                 .recover(err -> {
-                    log.error("ACTION '{}' failed for org={} user={}", step.getAction(), orgId, userId, err);
+                    log.error("ACTION '{}' failed for tenant={} user={}", step.getAction(), tenantId, userId, err);
                     context.put(StepActionHandler.ACTION_ERROR, err.getMessage());
-                    return cascade(orgId, userId, session, resolveBranchNext(step, false), flow, context);
+                    return cascade(tenantId, userId, session, resolveBranchNext(step, false), flow, context);
                 });
     }
 
@@ -169,9 +189,9 @@ public class FlowManager {
         return (String) step.getNext();
     }
 
-    private Future<FlowStepResult> executePayment(String orgId, String userId, ConversationSession session, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {
+    private Future<FlowStepResult> executePayment(String tenantId, String userId, ConversationSession session, FlowStep step, Map<String, FlowStep> flow, Map<String, Object> context) {
         PaymentRequest request = new PaymentRequest(
-                orgId,
+                tenantId,
                 userId,
                 TemplateUtil.render(step.getPaymentAmount(), context),
                 TemplateUtil.render(step.getPaymentCurrency(), context),
@@ -181,12 +201,12 @@ public class FlowManager {
                 .compose(link -> {
                     context.put("paymentLink", link.getUrl());
                     context.put("paymentReferenceId", link.getReferenceId());
-                    return cascade(orgId, userId, session, resolveBranchNext(step, true), flow, context);
+                    return cascade(tenantId, userId, session, resolveBranchNext(step, true), flow, context);
                 })
                 .recover(err -> {
-                    log.error("PAYMENT step failed for org={} user={}", orgId, userId, err);
+                    log.error("PAYMENT step failed for tenant={} user={}", tenantId, userId, err);
                     context.put("paymentError", err.getMessage());
-                    return cascade(orgId, userId, session, resolveBranchNext(step, false), flow, context);
+                    return cascade(tenantId, userId, session, resolveBranchNext(step, false), flow, context);
                 });
     }
 
@@ -226,18 +246,18 @@ public class FlowManager {
     }
 
     /**
-     * The user typed something that isn't a valid menu option. If the org has the LLM
+     * The user typed something that isn't a valid menu option. If the tenant has the LLM
      * fallback enabled, let the agent answer the off-script message and then re-show the
      * menu; otherwise fall back to the canned "invalid input" re-prompt. The user stays
      * parked on the same menu step either way.
      */
-    private Future<FlowStepResult> handleUnmatchedInput(String orgId, FlowStep step, String input, Map<String, Object> context) {
-        if (!llmAgentService.isAvailableFor(orgId)) {
+    private Future<FlowStepResult> handleUnmatchedInput(String tenantId, FlowStep step, String input, Map<String, Object> context) {
+        if (!llmAgentService.isAvailableFor(tenantId)) {
             return Future.succeededFuture(renderInvalidInput(step, context));
         }
 
         String menuText = renderStep(step, context).getMessage();
-        return llmAgentService.generateReply(orgId, input, menuText)
+        return llmAgentService.generateReply(tenantId, input, menuText)
                 .map(reply -> {
                     FlowStepResult result = renderStep(step, context);
                     result.setMessage((reply == null || reply.isBlank())
@@ -246,7 +266,7 @@ public class FlowManager {
                     return result;
                 })
                 .otherwise(err -> {
-                    log.error("LLM fallback failed for org={}, using default re-prompt", orgId, err);
+                    log.error("LLM fallback failed for tenant={}, using default re-prompt", tenantId, err);
                     return renderInvalidInput(step, context);
                 });
     }
